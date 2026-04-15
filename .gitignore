@@ -1,0 +1,5 @@
+node_modules/
+.netlify/
+data/current-config.json
+data/assessments/*.json
+reports/*.pdf

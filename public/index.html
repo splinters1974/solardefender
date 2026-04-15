@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bid / No Bid Assessment</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Configurable Scoring Workspace</p>
+          <h1 id="app-title">Bid / No Bid Assessment</h1>
+          <p class="hero-copy">
+            Turn the spreadsheet into a guided decision app with editable questions,
+            adjustable scoring, live feedback, and downloadable PDF reports.
+          </p>
+        </div>
+        <div class="hero-card">
+          <p class="hero-card-label">Project Output</p>
+          <strong>Reports are saved into <code>/reports</code></strong>
+          <span>Assessment JSON snapshots are saved into <code>/data/assessments</code></span>
+        </div>
+      </header>
+
+      <nav class="tabs">
+        <button class="tab is-active" data-tab="assessment">Assessment</button>
+        <button class="tab" data-tab="admin">Admin</button>
+        <button class="tab" data-tab="reports">Recent Reports</button>
+      </nav>
+
+      <main>
+        <section class="tab-panel is-active" id="assessment-panel">
+          <div class="panel-grid">
+            <div class="surface">
+              <div class="surface-header">
+                <div>
+                  <p class="section-label">User Workflow</p>
+                  <h2>Opportunity Assessment</h2>
+                </div>
+                <div class="template-picker">
+                  <label for="template-select">Template</label>
+                  <select id="template-select"></select>
+                </div>
+              </div>
+              <form id="assessment-form" class="stack gap-lg"></form>
+            </div>
+
+            <aside class="surface sticky">
+              <div class="surface-header">
+                <div>
+                  <p class="section-label">Live Output</p>
+                  <h2>Recommendation</h2>
+                </div>
+              </div>
+              <div id="score-summary" class="stack gap-md"></div>
+              <div class="actions">
+                <button id="save-report" class="button button-primary" type="button">
+                  Save Assessment & Generate PDF
+                </button>
+                <a id="download-report" class="button button-secondary is-hidden" target="_blank" rel="noopener">
+                  Open PDF
+                </a>
+              </div>
+              <p id="save-status" class="muted"></p>
+            </aside>
+          </div>
+        </section>
+
+        <section class="tab-panel" id="admin-panel">
+          <div class="surface stack gap-lg">
+            <div class="surface-header">
+              <div>
+                <p class="section-label">Admin Workflow</p>
+                <h2>Scoring Configuration</h2>
+              </div>
+              <div class="actions">
+                <button id="reset-config" class="button button-secondary" type="button">
+                  Reset to Seeded Template
+                </button>
+                <button id="save-config" class="button button-primary" type="button">
+                  Save Admin Changes
+                </button>
+              </div>
+            </div>
+            <div id="admin-content" class="stack gap-lg"></div>
+            <p id="admin-status" class="muted"></p>
+          </div>
+        </section>
+
+        <section class="tab-panel" id="reports-panel">
+          <div class="surface stack gap-lg">
+            <div class="surface-header">
+              <div>
+                <p class="section-label">Audit Trail</p>
+                <h2>Recent Assessments</h2>
+              </div>
+            </div>
+            <div id="reports-list" class="stack gap-md"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

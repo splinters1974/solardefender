@@ -1,0 +1,390 @@
+{
+  "appTitle": "Bid / No Bid Assessment",
+  "organizationName": "Centrica Business Solutions",
+  "decisionRules": {
+    "highPriorityThreshold": 75,
+    "minimumThreshold": 60,
+    "keyCriterionWarningScore": 1,
+    "decisions": {
+      "highPriority": "Bid with High Priority",
+      "standardBid": "Bid",
+      "noBid": "No Bid or Approval by Sales Director to Proceed"
+    },
+    "priorities": {
+      "highPriority": "High, No Approval Needed",
+      "standardBid": "Standard, No Approval Needed",
+      "noBid": "Low, Approval Needed"
+    },
+    "messages": {
+      "warning": "One or more key criteria landed at the warning score. Review carefully before proceeding.",
+      "sweetSpot": "This opportunity is in the sweet spot and should be progressed.",
+      "outsideSweetSpot": "This opportunity is outside the sweet spot and should be treated as a no bid unless approved."
+    }
+  },
+  "templates": [
+    {
+      "id": "bid-team",
+      "name": "Bid Team Form",
+      "description": "For complex bid squad opportunities.",
+      "metadataFields": [
+        "projectDescription",
+        "client",
+        "targetSector",
+        "targetMarketLeadProduct",
+        "multiTechOpportunity",
+        "opportunityManagedBy",
+        "estimatedCloseDate",
+        "approximateLov",
+        "salesforceOpportunityUrl",
+        "approvedByName",
+        "approvedByTitle"
+      ],
+      "sections": [
+        {
+          "id": "attractiveness",
+          "name": "Attractiveness of the opportunity (we want to win it)",
+          "scoreLabel": "Attractiveness score",
+          "questions": [
+            {
+              "id": "attr-buying-process",
+              "text": "Customers buying process and sign off procedure understood?",
+              "weight": 0.05,
+              "keyCriterion": true,
+              "commentRequired": false,
+              "options": [
+                { "label": "No", "score": 1 },
+                { "label": "2", "score": 2 },
+                { "label": "3", "score": 3 },
+                { "label": "4", "score": 4 },
+                { "label": "Yes", "score": 5 }
+              ]
+            },
+            {
+              "id": "attr-funding",
+              "text": "Customer's funding method understood?",
+              "weight": 0.05,
+              "keyCriterion": false,
+              "commentRequired": false,
+              "options": [
+                { "label": "No", "score": 1 },
+                { "label": "2", "score": 2 },
+                { "label": "3", "score": 3 },
+                { "label": "4", "score": 4 },
+                { "label": "Yes", "score": 5 }
+              ]
+            },
+            {
+              "id": "attr-credit-check",
+              "text": "Credit check completed and returned with positive outcome?",
+              "weight": 0.05,
+              "keyCriterion": true,
+              "commentRequired": false,
+              "options": [
+                { "label": "No", "score": 1 },
+                { "label": "In progress", "score": 3 },
+                { "label": "Yes", "score": 5 }
+              ]
+            },
+            {
+              "id": "attr-energy-data",
+              "text": "Do we have all the necessary or expected energy data to proceed effectively?",
+              "weight": 0.05,
+              "keyCriterion": false,
+              "commentRequired": false,
+              "options": [
+                { "label": "No", "score": 1 },
+                { "label": "Partial", "score": 3 },
+                { "label": "Yes", "score": 5 }
+              ]
+            },
+            {
+              "id": "attr-project-go-ahead",
+              "text": "Chances that the customer's project will actually go ahead",
+              "weight": 0.1,
+              "keyCriterion": true,
+              "commentRequired": false,
+              "options": [
+                { "label": "0.2", "score": 1 },
+                { "label": "0.35", "score": 2 },
+                { "label": "0.5", "score": 3 },
+                { "label": "0.75", "score": 4 },
+                { "label": "0.95", "score": 5 }
+              ]
+            },
+            {
+              "id": "attr-technical-risk",
+              "text": "Risks present: what overall level of onsite technical risk profile is present?",
+              "weight": 0.2,
+              "keyCriterion": true,
+              "commentRequired": true,
+              "options": [
+                { "label": "High", "score": 1 },
+                { "label": "Medium or TBD", "score": 3 },
+                { "label": "Low", "score": 5 }
+              ]
+            },
+            {
+              "id": "attr-contract-support",
+              "text": "Risks present: can we support the form of contract presented as part of tender?",
+              "weight": 0.35,
+              "keyCriterion": true,
+              "commentRequired": true,
+              "options": [
+                { "label": "No", "score": 1 },
+                { "label": "Able to negotiate", "score": 3 },
+                { "label": "Yes", "score": 5 }
+              ]
+            },
+            {
+              "id": "attr-strategy-fit",
+              "text": "Does it fit into our target market strategy?",
+              "weight": 0.15,
+              "keyCriterion": true,
+              "commentRequired": false,
+              "options": [
+                { "label": "No", "score": 1 },
+                { "label": "Partial", "score": 3 },
+                { "label": "Yes", "score": 5 }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "feasibility",
+          "name": "Feasibility of the opportunity (we can win it)",
+          "scoreLabel": "Feasibility score",
+          "questions": [
+            {
+              "id": "feas-buying-influences",
+              "text": "Have we identified or engaged with the multiple buying influences?",
+              "weight": 0.15,
+              "keyCriterion": true,
+              "commentRequired": false,
+              "options": [
+                { "label": "No", "score": 1 },
+                { "label": "Partially", "score": 3 },
+                { "label": "Yes", "score": 5 }
+              ]
+            },
+            {
+              "id": "feas-roi",
+              "text": "Clear understanding of customers expectations on ROI?",
+              "weight": 0.15,
+              "keyCriterion": false,
+              "commentRequired": false,
+              "options": [
+                { "label": "No", "score": 1 },
+                { "label": "Partially", "score": 3 },
+                { "label": "Yes", "score": 5 }
+              ]
+            },
+            {
+              "id": "feas-bid-squad",
+              "text": "Can the Bid Squad support the tender process?",
+              "weight": 0.3,
+              "keyCriterion": true,
+              "commentRequired": true,
+              "options": [
+                { "label": "No", "score": 1 },
+                { "label": "Partially", "score": 3 },
+                { "label": "Yes", "score": 5 }
+              ]
+            },
+            {
+              "id": "feas-competition",
+              "text": "Position with respect to the competition",
+              "weight": 0.25,
+              "keyCriterion": true,
+              "commentRequired": true,
+              "options": [
+                { "label": "Weak", "score": 1 },
+                { "label": "At par or equal", "score": 3 },
+                { "label": "Strong", "score": 5 }
+              ]
+            },
+            {
+              "id": "feas-differentiation",
+              "text": "Do we have a differentiated solution? (e.g. funded solution or unique product)",
+              "weight": 0.15,
+              "keyCriterion": true,
+              "commentRequired": false,
+              "options": [
+                { "label": "Undifferentiated", "score": 1 },
+                { "label": "Partially", "score": 3 },
+                { "label": "Unique solution", "score": 5 }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "direct-team",
+      "name": "Direct Team Form",
+      "description": "For direct team opportunities.",
+      "metadataFields": [
+        "projectDescription",
+        "client",
+        "targetSector",
+        "targetMarketLeadProduct",
+        "multiTechOpportunity",
+        "opportunityManagedBy",
+        "estimatedCloseDate",
+        "approximateLov",
+        "salesforceOpportunityUrl",
+        "approvedByName",
+        "approvedByTitle"
+      ],
+      "sections": [
+        {
+          "id": "attractiveness",
+          "name": "Attractiveness of the opportunity (we want to win it)",
+          "scoreLabel": "Attractiveness score",
+          "questions": [
+            {
+              "id": "attr-buying-process",
+              "text": "Customers buying process and sign off procedure understood?",
+              "weight": 0.15,
+              "keyCriterion": true,
+              "commentRequired": false,
+              "options": [
+                { "label": "No", "score": 1 },
+                { "label": "3", "score": 3 },
+                { "label": "Yes", "score": 5 }
+              ]
+            },
+            {
+              "id": "attr-funding",
+              "text": "Customer's funding method understood?",
+              "weight": 0.1,
+              "keyCriterion": false,
+              "commentRequired": false,
+              "options": [
+                { "label": "No", "score": 1 },
+                { "label": "3", "score": 3 },
+                { "label": "Yes", "score": 5 }
+              ]
+            },
+            {
+              "id": "attr-credit-check",
+              "text": "Credit check completed and returned with positive outcome?",
+              "weight": 0.2,
+              "keyCriterion": true,
+              "commentRequired": false,
+              "options": [
+                { "label": "No", "score": 1 },
+                { "label": "In progress", "score": 3 },
+                { "label": "Yes", "score": 5 }
+              ]
+            },
+            {
+              "id": "attr-scoping-data",
+              "text": "Do we have all the data to undergo a scoping assessment?",
+              "weight": 0.05,
+              "keyCriterion": false,
+              "commentRequired": false,
+              "options": [
+                { "label": "No", "score": 1 },
+                { "label": "Partial", "score": 3 },
+                { "label": "Yes", "score": 5 }
+              ]
+            },
+            {
+              "id": "attr-project-go-ahead",
+              "text": "Chances that the customer's project will actually go ahead",
+              "weight": 0.1,
+              "keyCriterion": true,
+              "commentRequired": false,
+              "options": [
+                { "label": "0.2", "score": 1 },
+                { "label": "0.35", "score": 2 },
+                { "label": "0.5", "score": 3 },
+                { "label": "0.75", "score": 4 },
+                { "label": "0.95", "score": 5 }
+              ]
+            },
+            {
+              "id": "attr-risk",
+              "text": "Risks present (technical, contractual or legal including the proposed form of contract)?",
+              "weight": 0.2,
+              "keyCriterion": true,
+              "commentRequired": true,
+              "options": [
+                { "label": "High", "score": 1 },
+                { "label": "Medium or TBD", "score": 3 },
+                { "label": "Low", "score": 5 }
+              ]
+            },
+            {
+              "id": "attr-strategy-fit",
+              "text": "Does it fit into our target market strategy?",
+              "weight": 0.2,
+              "keyCriterion": true,
+              "commentRequired": false,
+              "options": [
+                { "label": "No", "score": 1 },
+                { "label": "Partial", "score": 3 },
+                { "label": "Yes", "score": 5 }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "feasibility",
+          "name": "Feasibility of the opportunity (we can win it)",
+          "scoreLabel": "Feasibility score",
+          "questions": [
+            {
+              "id": "feas-buying-influences",
+              "text": "Have we identified or engaged with the multiple buying influences?",
+              "weight": 0.35,
+              "keyCriterion": true,
+              "commentRequired": false,
+              "options": [
+                { "label": "No", "score": 1 },
+                { "label": "Partially", "score": 3 },
+                { "label": "Yes", "score": 5 }
+              ]
+            },
+            {
+              "id": "feas-roi",
+              "text": "Clear understanding of customers expectations on ROI?",
+              "weight": 0.15,
+              "keyCriterion": false,
+              "commentRequired": false,
+              "options": [
+                { "label": "No", "score": 1 },
+                { "label": "Partially", "score": 3 },
+                { "label": "Yes", "score": 5 }
+              ]
+            },
+            {
+              "id": "feas-competition",
+              "text": "Position with respect to the competition",
+              "weight": 0.3,
+              "keyCriterion": true,
+              "commentRequired": true,
+              "options": [
+                { "label": "Weak", "score": 1 },
+                { "label": "At par or equal", "score": 3 },
+                { "label": "Strong", "score": 5 }
+              ]
+            },
+            {
+              "id": "feas-differentiation",
+              "text": "Do we have a differentiated solution? (e.g. funded solution or unique product)",
+              "weight": 0.2,
+              "keyCriterion": true,
+              "commentRequired": false,
+              "options": [
+                { "label": "Undifferentiated", "score": 1 },
+                { "label": "Partially", "score": 3 },
+                { "label": "Unique solution", "score": 5 }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
