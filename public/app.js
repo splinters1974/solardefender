@@ -278,6 +278,7 @@ function renderMetadataField(field) {
 
 function renderSectionBlock(section) {
   const questions = section.questions.map(question => renderQuestion(question)).join("");
+  const headers = ["1", "2", "3", "4", "5"];
   return `
     <div class="section-block">
       <div class="section-heading">
@@ -286,46 +287,71 @@ function renderSectionBlock(section) {
           <h3>${escapeHtml(section.name)}</h3>
         </div>
       </div>
-      ${questions}
+      <div class="score-table">
+        <div class="score-table-head score-table-row">
+          <div class="score-criteria-head">Criteria</div>
+          <div class="score-weight-head">Weight</div>
+          <div class="score-options-head">
+            <span>Score Guide</span>
+            <div class="score-option-legend">
+              ${headers.map(label => `<span>${label}</span>`).join("")}
+            </div>
+          </div>
+          <div class="score-comments-head">Comments</div>
+        </div>
+        ${questions}
+      </div>
     </div>
   `;
 }
 
 function renderQuestion(question) {
   const response = state.assessment.responses[question.id] || {};
+  const scoreGuide = [1, 2, 3, 4, 5]
+    .map(scoreValue => {
+      const option = question.options.find(item => Number(item.score) === scoreValue);
+      const optionLabel = option ? option.label : "—";
+      const checked = Number(response.score) === scoreValue && response.label === optionLabel;
+
+      return `
+        <label class="score-cell ${checked ? "is-selected" : ""} ${option ? "" : "is-empty"}">
+          ${option ? `
+            <input
+              type="radio"
+              name="${question.id}"
+              value="${option.score}"
+              data-score="${option.score}"
+              data-question-id="${question.id}"
+              data-label="${escapeAttribute(option.label)}"
+              ${checked ? "checked" : ""}
+            />
+          ` : ""}
+          <span class="score-cell-number">${scoreValue}</span>
+          <span class="score-cell-label">${escapeHtml(optionLabel)}</span>
+        </label>
+      `;
+    })
+    .join("");
+
   return `
-    <fieldset class="question-card">
-      <legend>${escapeHtml(question.text)}</legend>
-      <div class="helper">
-        Weight ${question.weight} ${question.keyCriterion ? "• Key criterion" : ""}
+    <fieldset class="question-row ${question.keyCriterion ? "is-key" : ""}">
+      <div class="question-main">
+        <legend>${escapeHtml(question.text)}</legend>
+        <div class="helper">
+          ${question.keyCriterion ? "Key criterion" : "Standard criterion"}
+        </div>
       </div>
-      <div class="choice-row">
-        ${question.options
-          .map(option => {
-            const checked = Number(response.score) === Number(option.score) && response.label === option.label;
-            return `
-              <label>
-                <input
-                  type="radio"
-                  name="${question.id}"
-                  value="${option.score}"
-                  data-score="${option.score}"
-                  data-question-id="${question.id}"
-                  data-label="${escapeAttribute(option.label)}"
-                  ${checked ? "checked" : ""}
-                />
-                <span>${escapeHtml(option.label)} (${option.score})</span>
-              </label>
-            `;
-          })
-          .join("")}
+      <div class="question-weight">
+        <span>${question.weight}</span>
       </div>
-      <div>
-        <label for="comment-${question.id}">Comments</label>
+      <div class="score-cells">
+        ${scoreGuide}
+      </div>
+      <div class="question-comment">
         <textarea
           id="comment-${question.id}"
           data-comment="${question.id}"
-          placeholder="Optional notes for the report"
+          placeholder="Notes, risks, mitigation or rationale"
         >${escapeHtml(response.comment || "")}</textarea>
       </div>
     </fieldset>
@@ -335,6 +361,8 @@ function renderQuestion(question) {
 function renderSummary() {
   const summary = document.getElementById("score-summary");
   const result = calculateResult();
+  const attractiveness = result.sectionScores.attractiveness ?? 0;
+  const feasibility = result.sectionScores.feasibility ?? 0;
   const warningList = result.warningQuestions.length
     ? `<div class="helper"><strong>Flagged key criteria:</strong> ${result.warningQuestions
         .map(question => escapeHtml(question.text))
@@ -348,14 +376,15 @@ function renderSummary() {
     <div class="helper">${escapeHtml(result.summaryMessage)}</div>
     ${result.warningMessage ? `<div class="helper"><strong>Warning:</strong> ${escapeHtml(result.warningMessage)}</div>` : ""}
     ${warningList}
+    ${renderDecisionMatrix(result, attractiveness, feasibility)}
     <div class="metrics-grid">
       <div class="metric">
         <small>Attractiveness</small>
-        <span class="metric-value">${result.sectionScores.attractiveness ?? 0}</span>
+        <span class="metric-value">${attractiveness}</span>
       </div>
       <div class="metric">
         <small>Feasibility</small>
-        <span class="metric-value">${result.sectionScores.feasibility ?? 0}</span>
+        <span class="metric-value">${feasibility}</span>
       </div>
       <div class="metric">
         <small>Total</small>
@@ -364,6 +393,43 @@ function renderSummary() {
       <div class="metric">
         <small>Priority</small>
         <span class="metric-value" style="font-size:1.2rem">${escapeHtml(result.priority)}</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderDecisionMatrix(result, attractiveness, feasibility) {
+  const top = `${100 - Math.max(0, Math.min(100, feasibility))}%`;
+  const left = `${Math.max(0, Math.min(100, attractiveness))}%`;
+
+  return `
+    <div class="matrix-card">
+      <div class="matrix-header">
+        <div>
+          <strong>Bid Position Map</strong>
+          <div class="helper">Attractiveness on the horizontal axis, feasibility on the vertical axis.</div>
+        </div>
+        <span class="matrix-badge ${result.tone}">${escapeHtml(result.decision)}</span>
+      </div>
+      <div class="matrix">
+        <div class="matrix-zone no-bid">
+          <span>No Bid</span>
+        </div>
+        <div class="matrix-zone in-scope">
+          <span>In Scope with Risks Highlighted</span>
+        </div>
+        <div class="matrix-zone sweet-spot">
+          <span>Sweet Spot</span>
+        </div>
+        <div class="matrix-axis matrix-axis-y">Feasibility</div>
+        <div class="matrix-axis matrix-axis-x">Attractiveness</div>
+        <div class="matrix-marker" style="top:${top}; left:${left};">
+          <span></span>
+        </div>
+      </div>
+      <div class="matrix-foot">
+        <span>X ${attractiveness}</span>
+        <span>Y ${feasibility}</span>
       </div>
     </div>
   `;

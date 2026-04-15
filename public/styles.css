@@ -240,11 +240,6 @@ textarea {
   gap: 16px;
 }
 
-.question-card {
-  display: grid;
-  gap: 12px;
-}
-
 .question-meta,
 .option-editor {
   display: grid;
@@ -257,16 +252,150 @@ textarea {
   align-items: end;
 }
 
-.choice-row {
+.score-table {
+  display: grid;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+  background: white;
+}
+
+.score-table-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 2.2fr) 88px minmax(330px, 2.5fr) minmax(220px, 1.4fr);
+}
+
+.score-table-head {
+  background: #ede3d3;
+  color: #39453f;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.score-table-head > div {
+  padding: 14px 16px;
+  border-right: 1px solid var(--line);
+}
+
+.score-table-head > div:last-child {
+  border-right: 0;
+}
+
+.score-options-head {
   display: grid;
   gap: 8px;
 }
 
-.choice-row label {
-  display: inline-flex;
-  align-items: center;
+.score-option-legend {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
-  font-size: 0.95rem;
+  text-align: center;
+  font-size: 0.82rem;
+}
+
+.question-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 2.2fr) 88px minmax(330px, 2.5fr) minmax(220px, 1.4fr);
+  border-top: 1px solid var(--line);
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.question-row > * {
+  padding: 16px;
+  border-right: 1px solid rgba(216, 204, 187, 0.8);
+  min-width: 0;
+}
+
+.question-row > *:last-child {
+  border-right: 0;
+}
+
+.question-row.is-key {
+  background: linear-gradient(90deg, rgba(13, 107, 87, 0.06), transparent 38%);
+}
+
+.question-main legend {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.question-weight {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--accent-strong);
+}
+
+.score-cells {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.score-cell {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  min-height: 98px;
+  padding: 12px 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fcfaf5;
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.score-cell:hover {
+  transform: translateY(-1px);
+  border-color: rgba(13, 107, 87, 0.5);
+}
+
+.score-cell input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.score-cell.is-selected {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  background: rgba(13, 107, 87, 0.08);
+}
+
+.score-cell.is-empty {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.score-cell-number {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #e6dccd;
+  color: #433e36;
+  font-weight: 700;
+  font-size: 0.86rem;
+}
+
+.score-cell-label {
+  font-size: 0.86rem;
+  line-height: 1.25;
+}
+
+.question-comment textarea {
+  min-height: 98px;
+  background: #fffdf9;
 }
 
 .metric {
@@ -304,6 +433,139 @@ textarea {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.matrix-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(247, 240, 226, 0.95));
+  border: 1px solid rgba(216, 204, 187, 0.95);
+}
+
+.matrix-header,
+.matrix-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.matrix-badge {
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.matrix-badge.success {
+  background: rgba(37, 112, 67, 0.14);
+  color: var(--success);
+}
+
+.matrix-badge.warning {
+  background: rgba(185, 117, 17, 0.14);
+  color: var(--warn);
+}
+
+.matrix-badge.danger {
+  background: rgba(178, 58, 43, 0.14);
+  color: var(--danger);
+}
+
+.matrix {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(216, 204, 187, 0.95);
+  background:
+    linear-gradient(to right, rgba(210, 88, 64, 0.22) 0 60%, rgba(212, 174, 79, 0.2) 60% 75%, rgba(72, 146, 91, 0.24) 75% 100%),
+    linear-gradient(to top, rgba(210, 88, 64, 0.22) 0 60%, rgba(212, 174, 79, 0.16) 60% 75%, rgba(72, 146, 91, 0.18) 75% 100%);
+}
+
+.matrix::before,
+.matrix::after {
+  content: "";
+  position: absolute;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.matrix::before {
+  left: 60%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+}
+
+.matrix::after {
+  bottom: 60%;
+  left: 0;
+  right: 0;
+  height: 2px;
+}
+
+.matrix-zone {
+  position: absolute;
+  padding: 12px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  max-width: 42%;
+}
+
+.matrix-zone.no-bid {
+  left: 14px;
+  bottom: 12px;
+}
+
+.matrix-zone.in-scope {
+  left: 63%;
+  bottom: 14px;
+}
+
+.matrix-zone.sweet-spot {
+  right: 14px;
+  top: 14px;
+  text-align: right;
+}
+
+.matrix-axis {
+  position: absolute;
+  color: rgba(30, 43, 39, 0.74);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.matrix-axis-y {
+  left: 10px;
+  top: 50%;
+  transform: rotate(-90deg) translateY(-50%);
+  transform-origin: left top;
+}
+
+.matrix-axis-x {
+  right: 14px;
+  bottom: 8px;
+}
+
+.matrix-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+.matrix-marker span {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #132b24;
+  border: 4px solid white;
+  box-shadow: 0 0 0 2px rgba(19, 43, 36, 0.2);
 }
 
 .button {
@@ -388,6 +650,41 @@ textarea {
   .question-meta,
   .admin-grid,
   .option-editor {
+    grid-template-columns: 1fr;
+  }
+
+  .score-table {
+    border: 0;
+    background: transparent;
+    gap: 14px;
+  }
+
+  .score-table-head {
+    display: none;
+  }
+
+  .question-row {
+    grid-template-columns: 1fr;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    overflow: hidden;
+    background: white;
+  }
+
+  .question-row > * {
+    border-right: 0;
+    border-top: 1px solid rgba(216, 204, 187, 0.8);
+  }
+
+  .question-row > *:first-child {
+    border-top: 0;
+  }
+
+  .question-weight {
+    justify-content: flex-start;
+  }
+
+  .score-cells {
     grid-template-columns: 1fr;
   }
 
