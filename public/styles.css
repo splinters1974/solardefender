@@ -91,12 +91,21 @@ h1 {
   padding: 20px;
   display: grid;
   gap: 8px;
+  place-items: center;
+  min-height: 240px;
 }
 
 .hero-card-label {
   margin: 0;
   color: var(--accent);
   font-weight: 700;
+}
+
+.hero-logo {
+  display: block;
+  width: min(100%, 320px);
+  height: auto;
+  object-fit: contain;
 }
 
 .tabs {
@@ -204,6 +213,11 @@ h1 {
 .field {
   background: var(--surface-strong);
   border-radius: 16px;
+}
+
+.admin-lock-card {
+  display: grid;
+  gap: 14px;
 }
 
 .field label,

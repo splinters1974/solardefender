@@ -2,8 +2,12 @@ const state = {
   config: null,
   assessment: null,
   reports: [],
-  latestReportUrl: ""
+  latestReportUrl: "",
+  adminPassword: sessionStorage.getItem("adminPassword") || "",
+  adminUnlocked: sessionStorage.getItem("adminUnlocked") === "true"
 };
+
+const ADMIN_PASSWORD = "ameresco2026";
 
 const metadataDefinitions = [
   { key: "projectDescription", label: "Project Description", type: "text" },
@@ -33,6 +37,9 @@ const panels = {
 
 tabs.forEach(tab => {
   tab.addEventListener("click", () => {
+    if (tab.dataset.tab === "admin" && !ensureAdminAccess()) {
+      return;
+    }
     tabs.forEach(item => item.classList.toggle("is-active", item === tab));
     Object.entries(panels).forEach(([key, panel]) => {
       panel.classList.toggle("is-active", key === tab.dataset.tab);
@@ -450,6 +457,23 @@ function renderDecisionMatrix(result, attractiveness, feasibility) {
 
 function renderAdmin() {
   const container = document.getElementById("admin-content");
+  if (!state.adminUnlocked) {
+    container.innerHTML = `
+      <div class="field admin-lock-card">
+        <label>Admin Area Locked</label>
+        <p class="helper">Enter the admin password to view and edit the scoring configuration.</p>
+        <button id="unlock-admin" class="button button-primary" type="button">Unlock Admin</button>
+      </div>
+    `;
+
+    document.getElementById("unlock-admin")?.addEventListener("click", () => {
+      if (ensureAdminAccess()) {
+        renderAdmin();
+      }
+    });
+    return;
+  }
+
   const templateHtml = state.config.templates.map(renderAdminTemplate).join("");
 
   container.innerHTML = `
@@ -787,10 +811,17 @@ function syncAllScoreSelections() {
 async function saveConfig() {
   const status = document.getElementById("admin-status");
   const currentTemplateId = state.assessment.templateId;
+  if (!ensureAdminAccess()) {
+    status.textContent = "Admin password required to save configuration changes.";
+    return;
+  }
   status.textContent = "Saving admin changes...";
   await fetchJson("/api/config", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-admin-password": state.adminPassword
+    },
     body: JSON.stringify(state.config)
   });
   createAssessment(getTemplate(currentTemplateId) ? currentTemplateId : state.config.templates[0].id);
@@ -799,11 +830,21 @@ async function saveConfig() {
 }
 
 async function resetConfig() {
-  const response = await fetchJson("/api/config/reset", { method: "POST" });
+  const status = document.getElementById("admin-status");
+  if (!ensureAdminAccess()) {
+    status.textContent = "Admin password required to reset the configuration.";
+    return;
+  }
+  const response = await fetchJson("/api/config/reset", {
+    method: "POST",
+    headers: {
+      "x-admin-password": state.adminPassword
+    }
+  });
   state.config = response.config;
   createAssessment(state.config.templates[0].id);
   renderAll();
-  document.getElementById("admin-status").textContent = "Configuration reset to the seeded workbook-based template.";
+  status.textContent = "Configuration reset to the seeded workbook-based template.";
 }
 
 async function saveAssessmentReport() {
@@ -882,4 +923,24 @@ function escapeHtml(value) {
 
 function escapeAttribute(value) {
   return escapeHtml(value).replace(/`/g, "&#96;");
+}
+
+function ensureAdminAccess() {
+  if (state.adminUnlocked && state.adminPassword === ADMIN_PASSWORD) {
+    return true;
+  }
+
+  const enteredPassword = window.prompt("Enter the admin password");
+  if (enteredPassword === ADMIN_PASSWORD) {
+    state.adminPassword = enteredPassword;
+    state.adminUnlocked = true;
+    sessionStorage.setItem("adminPassword", enteredPassword);
+    sessionStorage.setItem("adminUnlocked", "true");
+    return true;
+  }
+
+  if (enteredPassword !== null) {
+    window.alert("Incorrect password.");
+  }
+  return false;
 }

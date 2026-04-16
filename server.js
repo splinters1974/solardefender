@@ -12,6 +12,7 @@ const REPORT_DIR = path.join(ROOT, "reports");
 const ASSESSMENTS_DIR = path.join(DATA_DIR, "assessments");
 const DEFAULT_CONFIG_PATH = path.join(DATA_DIR, "default-config.json");
 const CURRENT_CONFIG_PATH = path.join(DATA_DIR, "current-config.json");
+const ADMIN_PASSWORD = "ameresco2026";
 
 ensureRuntimeFiles();
 
@@ -331,6 +332,10 @@ function routeApi(req, res, pathname) {
   }
 
   if (req.method === "POST" && pathname === "/api/config") {
+    if (req.headers["x-admin-password"] !== ADMIN_PASSWORD) {
+      sendJson(res, 401, { error: "Unauthorized" });
+      return true;
+    }
     collectBody(req)
       .then(payload => {
         writeJson(CURRENT_CONFIG_PATH, payload);
@@ -341,6 +346,10 @@ function routeApi(req, res, pathname) {
   }
 
   if (req.method === "POST" && pathname === "/api/config/reset") {
+    if (req.headers["x-admin-password"] !== ADMIN_PASSWORD) {
+      sendJson(res, 401, { error: "Unauthorized" });
+      return true;
+    }
     fs.copyFileSync(DEFAULT_CONFIG_PATH, CURRENT_CONFIG_PATH);
     sendJson(res, 200, { ok: true, config: readJson(CURRENT_CONFIG_PATH) });
     return true;
