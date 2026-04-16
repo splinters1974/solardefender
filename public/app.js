@@ -771,50 +771,181 @@ function drawEnemies() {
     const x = enemy.x;
     const y = 46 + bob;
 
-    ctx.fillStyle = enemy.suit;
-    ctx.fillRect(x - 36, y + 30, 72, 62);
-    ctx.fillStyle = enemy.face;
-    ctx.fillRect(x - 24, y, 48, 42);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(x - 15, y + 14, 8, 6);
-    ctx.fillRect(x + 7, y + 14, 8, 6);
-    ctx.fillStyle = "#232323";
-    ctx.fillRect(x - 12, y + 16, 4, 3);
-    ctx.fillRect(x + 8, y + 16, 4, 3);
-    ctx.fillStyle = enemy.hair;
-    ctx.fillRect(x - 27, y - 4, 54, 13);
-
-    if (enemy.id === "trump") {
-      ctx.fillStyle = "#ff6d54";
-      ctx.fillRect(x - 14, y + 27, 28, 4);
-      ctx.fillStyle = "#c61224";
-      ctx.fillRect(x - 12, y + 38, 24, 10);
-    } else {
-      ctx.fillStyle = "#dce6ef";
-      ctx.fillRect(x - 8, y + 30, 16, 32);
-      ctx.fillStyle = "#ea4545";
-      ctx.fillRect(x - 4, y + 30, 8, 32);
-      ctx.strokeStyle = "#1e1e1e";
-      ctx.lineWidth = 3;
-      ctx.strokeRect(x - 27, y + 10, 12, 12);
-      ctx.strokeRect(x + 15, y + 10, 12, 12);
-      ctx.beginPath();
-      ctx.moveTo(x - 15, y + 16);
-      ctx.lineTo(x + 15, y + 16);
-      ctx.stroke();
-    }
-
-    ctx.fillStyle = "#f0c79e";
-    ctx.fillRect(x - 46, y + 36, 12, 34);
-    ctx.fillRect(x + 34, y + 36, 12, 34);
-
-    ctx.fillStyle = enemy.kind === "stone" ? "#bbb2a8" : "#95ff9b";
-    if (enemy.kind === "stone") {
-      drawRock(x + 50, y + 50, 14, 0.3);
-    } else {
-      drawCash(x + 52, y + 54, 24, 15, 0.15);
-    }
+    drawEnemyFigure(enemy, x, y);
   }
+}
+
+function drawEnemyFigure(enemy, x, y) {
+  ctx.save();
+  ctx.translate(x, y);
+
+  drawEnemyArms(enemy);
+  drawEnemyBody(enemy);
+  drawEnemyHead(enemy);
+
+  if (enemy.id === "trump") {
+    drawTrumpHair();
+    drawTrumpFace();
+    drawTrumpTie();
+    drawRock(54, 53, 14, 0.3);
+  } else {
+    drawMilibandHair();
+    drawMilibandFace();
+    drawMilibandTie();
+    drawMilibandGlasses();
+    drawCash(54, 53, 24, 15, 0.15);
+  }
+
+  ctx.restore();
+}
+
+function drawEnemyBody(enemy) {
+  ctx.fillStyle = enemy.suit;
+  ctx.beginPath();
+  ctx.moveTo(-38, 92);
+  ctx.quadraticCurveTo(-34, 38, 0, 32);
+  ctx.quadraticCurveTo(34, 38, 38, 92);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = "#e9edf5";
+  ctx.beginPath();
+  ctx.moveTo(-12, 34);
+  ctx.lineTo(0, 64);
+  ctx.lineTo(12, 34);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawEnemyArms(enemy) {
+  ctx.strokeStyle = enemy.face;
+  ctx.lineWidth = 12;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-26, 46);
+  ctx.quadraticCurveTo(-46, 52, -48, 76);
+  ctx.moveTo(26, 46);
+  ctx.quadraticCurveTo(50, 50, 52, 78);
+  ctx.stroke();
+}
+
+function drawEnemyHead(enemy) {
+  ctx.fillStyle = enemy.face;
+  ctx.beginPath();
+  ctx.ellipse(0, 19, 26, 30, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawTrumpHair() {
+  ctx.fillStyle = "#f5d25f";
+  ctx.beginPath();
+  ctx.moveTo(-24, 2);
+  ctx.quadraticCurveTo(-8, -16, 24, -4);
+  ctx.quadraticCurveTo(8, 2, -2, 10);
+  ctx.quadraticCurveTo(-12, 3, -24, 2);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawTrumpFace() {
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.ellipse(-10, 18, 5, 4, 0, 0, Math.PI * 2);
+  ctx.ellipse(10, 18, 5, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#2a2020";
+  ctx.beginPath();
+  ctx.arc(-10, 18, 2, 0, Math.PI * 2);
+  ctx.arc(10, 18, 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "#b5542b";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, 21);
+  ctx.lineTo(-2, 29);
+  ctx.stroke();
+
+  ctx.strokeStyle = "#b23034";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-12, 34);
+  ctx.quadraticCurveTo(0, 39, 12, 34);
+  ctx.stroke();
+}
+
+function drawTrumpTie() {
+  ctx.fillStyle = "#dd1d2f";
+  ctx.beginPath();
+  ctx.moveTo(0, 42);
+  ctx.lineTo(8, 72);
+  ctx.lineTo(0, 88);
+  ctx.lineTo(-8, 72);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawMilibandHair() {
+  ctx.fillStyle = "#2f3640";
+  ctx.beginPath();
+  ctx.moveTo(-24, 8);
+  ctx.quadraticCurveTo(-18, -10, 0, -12);
+  ctx.quadraticCurveTo(18, -10, 24, 8);
+  ctx.quadraticCurveTo(12, 2, 0, 4);
+  ctx.quadraticCurveTo(-10, 2, -24, 8);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawMilibandFace() {
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.ellipse(-9, 19, 4.5, 4, 0, 0, Math.PI * 2);
+  ctx.ellipse(9, 19, 4.5, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#1d1d1d";
+  ctx.beginPath();
+  ctx.arc(-9, 19, 2, 0, Math.PI * 2);
+  ctx.arc(9, 19, 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "#87573f";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, 20);
+  ctx.lineTo(1, 29);
+  ctx.stroke();
+
+  ctx.strokeStyle = "#6a3227";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(-10, 35);
+  ctx.quadraticCurveTo(0, 33, 10, 35);
+  ctx.stroke();
+}
+
+function drawMilibandTie() {
+  ctx.fillStyle = "#d63f3f";
+  ctx.beginPath();
+  ctx.moveTo(0, 42);
+  ctx.lineTo(7, 68);
+  ctx.lineTo(0, 84);
+  ctx.lineTo(-7, 68);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawMilibandGlasses() {
+  ctx.strokeStyle = "#1c1f24";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.rect(-16, 14, 12, 9);
+  ctx.rect(4, 14, 12, 9);
+  ctx.moveTo(-4, 18);
+  ctx.lineTo(4, 18);
+  ctx.stroke();
 }
 
 function drawProjectiles() {
