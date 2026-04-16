@@ -16,7 +16,7 @@ const ui = {
 
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
-const LEVEL_DURATION = 75;
+const LEVEL_DURATION = 60;
 const PANEL_COUNT = 20;
 const PANEL_HP = 3;
 const PLAYER_SPEED = 360;
@@ -98,9 +98,9 @@ const levelConfigs = {
 function createPlayer() {
   return {
     x: WIDTH / 2,
-    y: 430,
-    width: 46,
-    height: 62,
+    y: 444,
+    width: 38,
+    height: 54,
     swingDuration: 0.28,
     swingTimer: 0,
     swingCooldown: 0
@@ -111,13 +111,13 @@ function resetPanels() {
   const panels = [];
   const cols = 5;
   const rows = 4;
-  const panelWidth = 140;
-  const panelHeight = 34;
-  const gapX = 18;
-  const gapY = 14;
+  const panelWidth = 118;
+  const panelHeight = 28;
+  const gapX = 14;
+  const gapY = 12;
   const totalWidth = cols * panelWidth + (cols - 1) * gapX;
   const startX = (WIDTH - totalWidth) / 2;
-  const startY = 490;
+  const startY = 500;
 
   for (let row = 0; row < rows; row += 1) {
     for (let col = 0; col < cols; col += 1) {

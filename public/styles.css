@@ -40,24 +40,24 @@ button {
 .game-shell {
   width: min(1200px, calc(100% - 24px));
   margin: 0 auto;
-  padding: 10px 0 14px;
+  padding: 6px 0 8px;
 }
 
 .marquee {
   text-align: center;
-  padding: 8px 18px 4px;
+  padding: 4px 16px 2px;
 }
 
 .marquee-kicker {
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   color: var(--cyan);
   letter-spacing: 0.3em;
-  font-size: 0.76rem;
+  font-size: 0.68rem;
 }
 
 .marquee h1 {
   margin: 0;
-  font-size: clamp(2.4rem, 7vw, 5rem);
+  font-size: clamp(1.9rem, 5vw, 3.5rem);
   letter-spacing: 0.08em;
   color: var(--line);
   text-shadow:
@@ -66,16 +66,16 @@ button {
 }
 
 .marquee-copy {
-  width: min(700px, 100%);
-  margin: 8px auto 0;
+  width: min(680px, 100%);
+  margin: 4px auto 0;
   color: var(--muted);
-  line-height: 1.35;
-  font-size: 0.95rem;
+  line-height: 1.2;
+  font-size: 0.83rem;
 }
 
 .cabinet {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .status-panel,
@@ -91,19 +91,19 @@ button {
 
 .status-panel,
 .controls-panel {
-  padding: 12px;
+  padding: 8px 10px;
 }
 
 .status-row {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .status-row.secondary {
   grid-template-columns: repeat(2, minmax(0, 220px));
   justify-content: center;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .status-card,
@@ -111,7 +111,7 @@ button {
   border: 2px solid rgba(89, 242, 255, 0.3);
   border-radius: 16px;
   background: var(--panel);
-  padding: 10px 12px;
+  padding: 8px 10px;
 }
 
 .status-card .label {
@@ -119,12 +119,12 @@ button {
   color: var(--cyan);
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  font-size: 0.72rem;
-  margin-bottom: 6px;
+  font-size: 0.62rem;
+  margin-bottom: 4px;
 }
 
 .status-card strong {
-  font-size: clamp(1.2rem, 3vw, 1.7rem);
+  font-size: clamp(1rem, 2.2vw, 1.35rem);
   color: var(--text);
 }
 
@@ -132,7 +132,7 @@ button {
 .touch-button {
   border: 0;
   border-radius: 999px;
-  padding: 10px 14px;
+  padding: 8px 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
   cursor: pointer;
@@ -152,19 +152,19 @@ button {
 }
 
 .message-box {
-  margin-top: 10px;
-  padding: 10px 12px;
+  margin-top: 8px;
+  padding: 8px 10px;
   border-radius: 16px;
   background: rgba(8, 20, 40, 0.65);
   border: 2px solid rgba(255, 79, 112, 0.25);
   color: var(--text);
-  min-height: 46px;
-  line-height: 1.25;
-  font-size: 0.95rem;
+  min-height: 34px;
+  line-height: 1.15;
+  font-size: 0.82rem;
 }
 
 .screen-shell {
-  padding: 8px;
+  padding: 6px;
 }
 
 canvas {
@@ -179,32 +179,32 @@ canvas {
 
 .controls-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.9fr);
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.75fr);
+  gap: 8px;
   align-items: center;
 }
 
 .control-card h2 {
-  margin: 0 0 8px;
+  margin: 0 0 5px;
   color: var(--line);
-  font-size: 1rem;
+  font-size: 0.85rem;
 }
 
 .control-card p {
-  margin: 6px 0;
+  margin: 4px 0;
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: 0.8rem;
 }
 
 .touch-controls {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
 }
 
 .touch-button {
-  min-height: 52px;
-  font-size: 0.95rem;
+  min-height: 42px;
+  font-size: 0.84rem;
 }
 
 .touch-button-main {
@@ -248,7 +248,7 @@ canvas {
   }
 
   canvas {
-    max-height: 54vh;
+    max-height: 63vh;
     margin: 0 auto;
   }
 }
