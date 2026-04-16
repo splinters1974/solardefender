@@ -33,7 +33,8 @@ const state = {
   particles: [],
   flashes: [],
   enemies: [],
-  keys: { left: false, right: false, shield: false },
+  keys: { left: false, right: false },
+  pendingSwing: false,
   lastTime: 0,
   musicStarted: false,
   muted: false
@@ -99,9 +100,9 @@ function createPlayer() {
     y: 430,
     width: 46,
     height: 62,
-    shieldWidth: 110,
-    shieldHeight: 16,
-    shieldRaised: false
+    swingDuration: 0.28,
+    swingTimer: 0,
+    swingCooldown: 0
   };
 }
 
@@ -142,9 +143,10 @@ function startGame() {
   state.particles = [];
   state.flashes = [];
   state.player = createPlayer();
+  state.pendingSwing = false;
   resetPanels();
   prepareLevel(1);
-  updateMessage("Level 1: Trump hurls stones. Keep at least one panel standing for 75 seconds.");
+  updateMessage("Level 1: Trump hurls stones. Tap Space to swat them with the squeegee.");
   ensureAudio();
 }
 
@@ -165,7 +167,7 @@ function prepareLevel(levelNumber) {
 function advanceLevel() {
   if (state.level === 1) {
     prepareLevel(2);
-    updateMessage("Level 2: Ed Miliband joins in with heavy cash bundles. The barrage gets faster now.");
+    updateMessage("Level 2: Ed Miliband joins in with cash bundles. Keep swinging and save at least one panel.");
     playFx("level-up");
     return;
   }
@@ -214,7 +216,21 @@ function bindHold(button, key) {
 
 bindHold(ui.left, "left");
 bindHold(ui.right, "right");
-bindHold(ui.shield, "shield");
+ui.shield.addEventListener("pointerdown", event => {
+  event.preventDefault();
+  queueSwing();
+  setHeld(ui.shield, true);
+  ensureAudio();
+});
+
+const releaseShieldButton = event => {
+  event.preventDefault();
+  setHeld(ui.shield, false);
+};
+
+ui.shield.addEventListener("pointerup", releaseShieldButton);
+ui.shield.addEventListener("pointerleave", releaseShieldButton);
+ui.shield.addEventListener("pointercancel", releaseShieldButton);
 
 ui.start.addEventListener("click", startGame);
 ui.mute.addEventListener("click", toggleMute);
@@ -232,7 +248,7 @@ window.addEventListener("keydown", event => {
   }
   if (event.code === "Space") {
     event.preventDefault();
-    state.keys.shield = true;
+    queueSwing();
   }
   if (event.code === "Enter" && state.screen !== "playing") {
     startGame();
@@ -247,10 +263,11 @@ window.addEventListener("keyup", event => {
   if (event.code === "ArrowRight" || event.code === "KeyD") {
     state.keys.right = false;
   }
-  if (event.code === "Space") {
-    state.keys.shield = false;
-  }
 });
+
+function queueSwing() {
+  state.pendingSwing = true;
+}
 
 function toggleMute() {
   state.muted = !state.muted;
@@ -356,6 +373,12 @@ function playFx(type) {
     return;
   }
 
+  if (type === "swing") {
+    playTone(310, now, 0.03, "square", 0.05, audioState.fxGain);
+    playTone(420, now + 0.03, 0.05, "square", 0.04, audioState.fxGain);
+    return;
+  }
+
   if (type === "panel-hit") {
     playTone(190, now, 0.14, "sawtooth", 0.09, audioState.fxGain);
     return;
@@ -394,8 +417,13 @@ function randomBetween(min, max) {
 }
 
 function spawnProjectile(enemy) {
-  const targetPanel = state.panels.filter(panel => panel.hp > 0)[Math.floor(Math.random() * Math.max(1, countAlivePanels()))];
-  const targetX = targetPanel ? targetPanel.x + targetPanel.width / 2 : WIDTH / 2;
+  const alivePanels = state.panels.filter(panel => panel.hp > 0);
+  const targetPanel = alivePanels.length
+    ? alivePanels[Math.floor(Math.random() * alivePanels.length)]
+    : null;
+  const targetX = Math.random() < 0.5
+    ? (targetPanel ? targetPanel.x + targetPanel.width / 2 : WIDTH / 2)
+    : randomBetween(80, WIDTH - 80);
   const dx = targetX - enemy.x;
   const dy = state.player.y - 40;
   const travel = Math.max(Math.hypot(dx, dy), 1);
@@ -407,7 +435,7 @@ function spawnProjectile(enemy) {
   state.projectiles.push({
     x: enemy.x,
     y: 120,
-    vx: (dx / travel) * randomBetween(18, 65),
+    vx: (dx / travel) * randomBetween(35, 125) + randomBetween(-35, 35),
     vy: speed,
     radius: enemy.kind === "stone" ? PROJECTILE_RADIUS : 18,
     rotation: Math.random() * Math.PI * 2,
@@ -421,7 +449,20 @@ function updatePlaying(dt) {
   const move = (state.keys.left ? -1 : 0) + (state.keys.right ? 1 : 0);
   state.player.x += move * PLAYER_SPEED * dt;
   state.player.x = Math.max(60, Math.min(WIDTH - 60, state.player.x));
-  state.player.shieldRaised = state.keys.shield;
+  state.player.swingCooldown = Math.max(0, state.player.swingCooldown - dt);
+
+  if (state.pendingSwing && state.player.swingCooldown <= 0 && state.player.swingTimer <= 0) {
+    state.player.swingTimer = state.player.swingDuration;
+    state.player.swingCooldown = 0.08;
+    state.pendingSwing = false;
+    playFx("swing");
+  } else if (state.pendingSwing && state.player.swingTimer > 0) {
+    state.pendingSwing = false;
+  }
+
+  if (state.player.swingTimer > 0) {
+    state.player.swingTimer = Math.max(0, state.player.swingTimer - dt);
+  }
 
   state.levelTime = Math.max(0, state.levelTime - dt);
 
@@ -476,10 +517,10 @@ function updatePlaying(dt) {
 }
 
 function handleCollisions() {
-  const shield = getShieldRect();
+  const swingHitbox = getSwingHitbox();
 
   state.projectiles = state.projectiles.filter(projectile => {
-    if (state.player.shieldRaised && intersectsCircleRect(projectile, shield)) {
+    if (swingHitbox && intersectsCircleRect(projectile, swingHitbox)) {
       state.score += projectile.kind === "stone" ? 120 : 140;
       spawnImpact(projectile.x, projectile.y, projectile.kind === "stone" ? "#e0d9cf" : "#8aff8d", 10);
       state.flashes.push({ x: projectile.x, y: projectile.y, radius: 34, color: "#59f2ff", life: 0.12 });
@@ -499,12 +540,33 @@ function handleCollisions() {
 }
 
 function getShieldRect() {
+  const phase = getSwingPhase();
+  const angle = state.player.swingTimer > 0
+    ? (-1.05 + phase * 2.1) * (Math.PI / 3.4)
+    : 0.18;
+  const cx = state.player.x + Math.sin(angle) * 58;
+  const cy = state.player.y - 12 - Math.cos(angle) * 36;
+
   return {
-    x: state.player.x - state.player.shieldWidth / 2,
-    y: state.player.y - 18,
-    width: state.player.shieldWidth,
-    height: state.player.shieldHeight
+    x: cx - 54,
+    y: cy - 15,
+    width: 108,
+    height: 30
   };
+}
+
+function getSwingPhase() {
+  if (state.player.swingTimer <= 0) {
+    return 0;
+  }
+  return 1 - state.player.swingTimer / state.player.swingDuration;
+}
+
+function getSwingHitbox() {
+  if (state.player.swingTimer <= 0) {
+    return null;
+  }
+  return getShieldRect();
 }
 
 function intersectsCircleRect(circle, rect) {
@@ -671,15 +733,26 @@ function drawPlayer() {
   ctx.fillRect(x + width / 2, y + 10, 8, 16);
   ctx.fillRect(x - 16, y + height - 16, 9, 22);
   ctx.fillRect(x + 7, y + height - 16, 9, 22);
+  drawSqueegee();
+}
 
-  const shield = getShieldRect();
-  ctx.fillStyle = state.player.shieldRaised ? "#7df6ff" : "#8fd6dc";
-  ctx.fillRect(shield.x, shield.y, shield.width, shield.height);
+function drawSqueegee() {
+  const phase = getSwingPhase();
+  const angle = state.player.swingTimer > 0
+    ? (-1.05 + phase * 2.1) * (Math.PI / 3.4)
+    : 0.18;
+
+  ctx.save();
+  ctx.translate(state.player.x, state.player.y + 18);
+  ctx.rotate(angle);
+  ctx.fillStyle = "#6d4e31";
+  ctx.fillRect(-4, -56, 8, 82);
+  ctx.fillStyle = state.player.swingTimer > 0 ? "#7df6ff" : "#8fd6dc";
+  ctx.fillRect(-50, -64, 100, 18);
   ctx.strokeStyle = "#f5fbff";
   ctx.lineWidth = 3;
-  ctx.strokeRect(shield.x, shield.y, shield.width, shield.height);
-  ctx.fillStyle = "#314256";
-  ctx.fillRect(x - 5, shield.y + 4, 10, 40);
+  ctx.strokeRect(-50, -64, 100, 18);
+  ctx.restore();
 }
 
 function drawEnemies() {
@@ -820,7 +893,7 @@ function drawOverlay() {
     ctx.fillStyle = "#fff7db";
     ctx.font = "22px sans-serif";
     ctx.fillText("Start with the button or press Enter.", WIDTH / 2, 300);
-    ctx.fillText("Shield with Space. Move with arrows or A/D.", WIDTH / 2, 338);
+    ctx.fillText("Swing with Space. Move with arrows or A/D.", WIDTH / 2, 338);
   }
 
   if (state.screen === "victory") {
@@ -874,7 +947,7 @@ function frame(timestamp) {
   requestAnimationFrame(frame);
 }
 
-updateMessage("Press start, then move with the arrow keys or A/D. Hold Space to raise the squeegee shield.");
+updateMessage("Press start, then move with the arrow keys or A/D. Tap Space to swing the squeegee.");
 resetPanels();
 prepareLevel(1);
 draw();

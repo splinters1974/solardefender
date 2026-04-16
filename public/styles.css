@@ -30,6 +30,7 @@ body {
     radial-gradient(circle at top, rgba(255, 143, 31, 0.2), transparent 22%),
     radial-gradient(circle at bottom, rgba(89, 242, 255, 0.14), transparent 25%),
     linear-gradient(180deg, #2a053f 0%, #13011f 54%, #090012 100%);
+  overflow-x: hidden;
 }
 
 button {
@@ -39,16 +40,16 @@ button {
 .game-shell {
   width: min(1200px, calc(100% - 24px));
   margin: 0 auto;
-  padding: 20px 0 28px;
+  padding: 10px 0 14px;
 }
 
 .marquee {
   text-align: center;
-  padding: 18px 18px 10px;
+  padding: 8px 18px 4px;
 }
 
 .marquee-kicker {
-  margin: 0 0 10px;
+  margin: 0 0 6px;
   color: var(--cyan);
   letter-spacing: 0.3em;
   font-size: 0.76rem;
@@ -66,14 +67,15 @@ button {
 
 .marquee-copy {
   width: min(700px, 100%);
-  margin: 12px auto 0;
+  margin: 8px auto 0;
   color: var(--muted);
-  line-height: 1.5;
+  line-height: 1.35;
+  font-size: 0.95rem;
 }
 
 .cabinet {
   display: grid;
-  gap: 18px;
+  gap: 10px;
 }
 
 .status-panel,
@@ -89,19 +91,19 @@ button {
 
 .status-panel,
 .controls-panel {
-  padding: 16px;
+  padding: 12px;
 }
 
 .status-row {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
 .status-row.secondary {
   grid-template-columns: repeat(2, minmax(0, 220px));
   justify-content: center;
-  margin-top: 14px;
+  margin-top: 10px;
 }
 
 .status-card,
@@ -109,7 +111,7 @@ button {
   border: 2px solid rgba(89, 242, 255, 0.3);
   border-radius: 16px;
   background: var(--panel);
-  padding: 12px 14px;
+  padding: 10px 12px;
 }
 
 .status-card .label {
@@ -122,7 +124,7 @@ button {
 }
 
 .status-card strong {
-  font-size: clamp(1.4rem, 4vw, 2rem);
+  font-size: clamp(1.2rem, 3vw, 1.7rem);
   color: var(--text);
 }
 
@@ -130,7 +132,7 @@ button {
 .touch-button {
   border: 0;
   border-radius: 999px;
-  padding: 14px 18px;
+  padding: 10px 14px;
   font-weight: 700;
   letter-spacing: 0.04em;
   cursor: pointer;
@@ -150,18 +152,19 @@ button {
 }
 
 .message-box {
-  margin-top: 14px;
-  padding: 14px 16px;
+  margin-top: 10px;
+  padding: 10px 12px;
   border-radius: 16px;
   background: rgba(8, 20, 40, 0.65);
   border: 2px solid rgba(255, 79, 112, 0.25);
   color: var(--text);
-  min-height: 58px;
-  line-height: 1.4;
+  min-height: 46px;
+  line-height: 1.25;
+  font-size: 0.95rem;
 }
 
 .screen-shell {
-  padding: 14px;
+  padding: 8px;
 }
 
 canvas {
@@ -177,19 +180,20 @@ canvas {
 .controls-panel {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.9fr);
-  gap: 16px;
+  gap: 12px;
   align-items: center;
 }
 
 .control-card h2 {
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   color: var(--line);
-  font-size: 1.1rem;
+  font-size: 1rem;
 }
 
 .control-card p {
-  margin: 8px 0;
+  margin: 6px 0;
   color: var(--muted);
+  font-size: 0.95rem;
 }
 
 .touch-controls {
@@ -199,8 +203,8 @@ canvas {
 }
 
 .touch-button {
-  min-height: 64px;
-  font-size: 1rem;
+  min-height: 52px;
+  font-size: 0.95rem;
 }
 
 .touch-button-main {
@@ -218,10 +222,41 @@ canvas {
   }
 }
 
+@media (min-width: 900px) {
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    overflow-y: hidden;
+  }
+
+  .game-shell {
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+  }
+
+  .cabinet {
+    min-height: 0;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .screen-shell {
+    min-height: 0;
+  }
+
+  canvas {
+    max-height: 54vh;
+    margin: 0 auto;
+  }
+}
+
 @media (max-width: 560px) {
   .game-shell {
     width: min(100% - 12px, 1200px);
-    padding-top: 10px;
+    padding-top: 8px;
   }
 
   .marquee {
