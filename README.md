@@ -46,3 +46,19 @@ http://127.0.0.1:3000
 1. Push your changes to GitHub.
 2. Import the repo into Netlify, or trigger a new deploy if it is already connected.
 3. Netlify will publish the static frontend from the `public` folder using the existing repo setup.
+
+## Deploy to GitHub Pages
+
+This repo now includes a GitHub Actions workflow that publishes the game from the `public` folder.
+
+1. Push your changes to GitHub.
+2. In GitHub, open the repo and go to `Settings` -> `Pages`.
+3. Under `Build and deployment`, set `Source` to `GitHub Actions`.
+4. Go to the `Actions` tab and wait for `Deploy to GitHub Pages` to finish.
+5. Your game will then be live at:
+
+```text
+https://splinters1974.github.io/solardefender/
+```
+
+If the site does not appear straight away, wait a minute and refresh the Pages settings screen.
