@@ -23,7 +23,8 @@ const PLAYER_SPEED = 360;
 const PROJECTILE_RADIUS = 16;
 const ENEMY_BUBBLES = {
   trump: ["Big, beautiful coal!", "Drill, baby, drill!", "Tariffs on sunshine!", "Windmills are a con!"],
-  miliband: ["Net zero by Tuesday.", "This needs a levy.", "Public money first.", "Time for reform."]
+  miliband: ["Net zero by Tuesday.", "This needs a levy.", "Public money first.", "Time for reform."],
+  dk: ["Ooh-ooh! Smash panels!", "Barrels beat panels!", "Jungle power!", "Nobody likes solar!"]
 };
 
 const state = {
@@ -94,6 +95,38 @@ const levelConfigs = {
         face: "#f1c49c",
         suit: "#3d4657",
         hair: "#1f2329"
+      }
+    ]
+  },
+  3: {
+    name: "Barrel Mayhem",
+    baseSpawn: 2.8,
+    spawnRamp: 1.35,
+    maxProjectiles: 22,
+    throwers: [
+      {
+        id: "trump",
+        x: WIDTH * 0.22,
+        kind: "stone",
+        face: "#ff9a42",
+        suit: "#12386d",
+        hair: "#ffe171"
+      },
+      {
+        id: "miliband",
+        x: WIDTH * 0.52,
+        kind: "cash",
+        face: "#f1c49c",
+        suit: "#3d4657",
+        hair: "#1f2329"
+      },
+      {
+        id: "dk",
+        x: WIDTH * 0.8,
+        kind: "barrel",
+        face: "#6b4426",
+        suit: "#7a2020",
+        hair: "#4a2b16"
       }
     ]
   }
@@ -185,6 +218,14 @@ function advanceLevel() {
     return;
   }
 
+  if (state.level === 2) {
+    prepareLevel(3);
+    pauseMusicFor(1);
+    updateMessage("Level 3: Donkey Kong joins in with barrels. Fresh panels are online again.");
+    playFx("level-up");
+    return;
+  }
+
   state.screen = "victory";
   playFx("victory");
   updateMessage(`Victory. You saved ${countAlivePanels()} panel${countAlivePanels() === 1 ? "" : "s"} and scored ${state.score}.`);
@@ -214,7 +255,9 @@ function bindHold(button, key) {
     event.preventDefault();
     state.keys[key] = true;
     setHeld(button, true);
-    ensureAudio();
+    if (state.screen === "playing") {
+      ensureAudio();
+    }
   };
   const up = event => {
     event.preventDefault();
@@ -234,7 +277,9 @@ ui.shield.addEventListener("pointerdown", event => {
   event.preventDefault();
   queueSwing();
   setHeld(ui.shield, true);
-  ensureAudio();
+  if (state.screen === "playing") {
+    ensureAudio();
+  }
 });
 
 const releaseShieldButton = event => {
@@ -267,7 +312,9 @@ window.addEventListener("keydown", event => {
   if (event.code === "Enter" && state.screen !== "playing") {
     startGame();
   }
-  ensureAudio();
+  if (state.screen === "playing") {
+    ensureAudio();
+  }
 });
 
 window.addEventListener("keyup", event => {
@@ -481,14 +528,16 @@ function spawnProjectile(enemy) {
   const levelFactor = state.level === 1 ? 1 : 1.25;
   const speed = enemy.kind === "stone"
     ? randomBetween(170, 260) * levelFactor
-    : randomBetween(180, 280) * levelFactor;
+    : enemy.kind === "cash"
+      ? randomBetween(180, 280) * levelFactor
+      : randomBetween(150, 235) * levelFactor;
 
   state.projectiles.push({
     x: enemy.x,
     y: 120,
     vx: (dx / travel) * randomBetween(35, 125) + randomBetween(-35, 35),
     vy: speed,
-    radius: enemy.kind === "stone" ? PROJECTILE_RADIUS : 18,
+    radius: enemy.kind === "stone" ? PROJECTILE_RADIUS : enemy.kind === "cash" ? 18 : 20,
     rotation: Math.random() * Math.PI * 2,
     spin: randomBetween(-4.2, 4.2),
     kind: enemy.kind,
@@ -856,7 +905,7 @@ function drawSpeechBubble(enemy, x, y) {
   ctx.fillStyle = "#2a2135";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(text, x, bubbleY + bubbleHeight / 2 + 1);
+  ctx.fillText(text, bubbleX + bubbleWidth / 2, bubbleY + bubbleHeight / 2 + 1);
   ctx.restore();
 }
 
@@ -873,12 +922,17 @@ function drawEnemyFigure(enemy, x, y) {
     drawTrumpFace();
     drawTrumpTie();
     drawRock(54, 53, 14, 0.3);
-  } else {
+  } else if (enemy.id === "miliband") {
     drawMilibandHair();
     drawMilibandFace();
     drawMilibandTie();
     drawMilibandGlasses();
     drawCash(54, 53, 24, 15, 0.15);
+  } else {
+    drawDKFur();
+    drawDKFace();
+    drawDKTie();
+    drawBarrel(56, 58, 18, 0.08);
   }
 
   ctx.restore();
@@ -1033,12 +1087,84 @@ function drawMilibandGlasses() {
   ctx.stroke();
 }
 
+function drawDKFur() {
+  ctx.fillStyle = "#5b371e";
+  ctx.beginPath();
+  ctx.ellipse(0, 19, 28, 31, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawDKFace() {
+  ctx.fillStyle = "#d8b18a";
+  ctx.beginPath();
+  ctx.ellipse(0, 24, 17, 15, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.ellipse(-8, 18, 4.5, 4, 0, 0, Math.PI * 2);
+  ctx.ellipse(8, 18, 4.5, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#1b1511";
+  ctx.beginPath();
+  ctx.arc(-8, 18, 2, 0, Math.PI * 2);
+  ctx.arc(8, 18, 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "#2d1d12";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-8, 31);
+  ctx.quadraticCurveTo(0, 35, 8, 31);
+  ctx.stroke();
+}
+
+function drawDKTie() {
+  ctx.fillStyle = "#d51c1c";
+  ctx.beginPath();
+  ctx.moveTo(-14, 44);
+  ctx.lineTo(14, 42);
+  ctx.lineTo(11, 52);
+  ctx.lineTo(-12, 54);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "#ffd34d";
+  ctx.font = "bold 12px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("DK", 0, 52);
+}
+
+function drawBarrel(x, y, size, rotation) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rotation);
+  ctx.fillStyle = "#8a542b";
+  ctx.beginPath();
+  ctx.ellipse(0, 0, size, size * 0.72, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#4b2b13";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-size * 0.65, -size * 0.28);
+  ctx.lineTo(size * 0.65, -size * 0.28);
+  ctx.moveTo(-size * 0.7, 0);
+  ctx.lineTo(size * 0.7, 0);
+  ctx.moveTo(-size * 0.65, size * 0.28);
+  ctx.lineTo(size * 0.65, size * 0.28);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawProjectiles() {
   for (const projectile of state.projectiles) {
     if (projectile.kind === "stone") {
       drawRock(projectile.x, projectile.y, projectile.radius, projectile.rotation);
-    } else {
+    } else if (projectile.kind === "cash") {
       drawCash(projectile.x, projectile.y, 28, 18, projectile.rotation);
+    } else {
+      drawBarrel(projectile.x, projectile.y, projectile.radius + 6, projectile.rotation);
     }
   }
 }
