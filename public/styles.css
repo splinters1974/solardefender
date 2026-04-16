@@ -277,7 +277,7 @@ textarea {
 
 .score-table-row {
   display: grid;
-  grid-template-columns: minmax(260px, 2fr) 104px minmax(330px, 2.3fr) minmax(300px, 1.8fr);
+  grid-template-columns: minmax(190px, 1.35fr) 72px minmax(320px, 1.85fr) minmax(360px, 2.3fr);
 }
 
 .score-table-head {
@@ -311,7 +311,7 @@ textarea {
 
 .question-row {
   display: grid;
-  grid-template-columns: minmax(260px, 2fr) 104px minmax(330px, 2.3fr) minmax(300px, 1.8fr);
+  grid-template-columns: minmax(190px, 1.35fr) 72px minmax(320px, 1.85fr) minmax(360px, 2.3fr);
   border-top: 1px solid var(--line);
   margin: 0;
   padding: 0;
@@ -332,6 +332,7 @@ textarea {
   font-size: 1rem;
   font-weight: 700;
   margin-bottom: 6px;
+  overflow-wrap: anywhere;
 }
 
 .question-weight {
@@ -339,8 +340,9 @@ textarea {
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   color: var(--accent-strong);
+  white-space: nowrap;
 }
 
 .score-cells {
@@ -411,6 +413,8 @@ textarea {
 
 .question-comment textarea {
   min-height: 144px;
+  width: 100%;
+  max-width: 100%;
   background: #fffdf9;
 }
 
