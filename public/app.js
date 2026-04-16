@@ -18,9 +18,13 @@ const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
 const LEVEL_DURATION = 60;
 const PANEL_COUNT = 20;
-const PANEL_HP = 3;
+const PANEL_HP = 2;
 const PLAYER_SPEED = 360;
 const PROJECTILE_RADIUS = 16;
+const ENEMY_BUBBLES = {
+  trump: ["Big, beautiful coal!", "Drill, baby, drill!", "Tariffs on sunshine!", "Windmills are a con!"],
+  miliband: ["Net zero by Tuesday.", "This needs a levy.", "Public money first.", "Time for reform."]
+};
 
 const state = {
   screen: "title",
@@ -109,15 +113,15 @@ function createPlayer() {
 
 function resetPanels() {
   const panels = [];
-  const cols = 5;
-  const rows = 4;
-  const panelWidth = 118;
+  const cols = 10;
+  const rows = 2;
+  const panelWidth = 76;
   const panelHeight = 28;
-  const gapX = 14;
-  const gapY = 12;
+  const gapX = 10;
+  const gapY = 16;
   const totalWidth = cols * panelWidth + (cols - 1) * gapX;
   const startX = (WIDTH - totalWidth) / 2;
-  const startY = 500;
+  const startY = 528;
 
   for (let row = 0; row < rows; row += 1) {
     for (let col = 0; col < cols; col += 1) {
@@ -165,7 +169,10 @@ function prepareLevel(levelNumber) {
   state.enemies = config.throwers.map(thrower => ({
     ...thrower,
     wobble: Math.random() * Math.PI * 2,
-    cooldown: randomBetween(0.45, 0.95)
+    cooldown: randomBetween(0.45, 0.95),
+    bubbleTimer: randomBetween(0.6, 1.8),
+    bubbleIndex: Math.floor(Math.random() * ENEMY_BUBBLES[thrower.id].length),
+    bubbleText: ENEMY_BUBBLES[thrower.id][0]
   }));
 }
 
@@ -456,14 +463,14 @@ function randomBetween(min, max) {
 }
 
 function nextThrowTargetX() {
-  const bands = 8;
-  const bandWidth = (WIDTH - 160) / bands;
-  const useSequentialBand = Math.random() < 0.7;
+  const bands = 12;
+  const bandWidth = (WIDTH - 120) / bands;
+  const useSequentialBand = Math.random() < 0.82;
   const bandIndex = useSequentialBand
     ? state.throwBandIndex++ % bands
     : Math.floor(Math.random() * bands);
-  const bandStart = 80 + bandIndex * bandWidth;
-  return bandStart + bandWidth / 2 + randomBetween(-bandWidth * 0.32, bandWidth * 0.32);
+  const bandStart = 60 + bandIndex * bandWidth;
+  return bandStart + bandWidth / 2 + randomBetween(-bandWidth * 0.42, bandWidth * 0.42);
 }
 
 function spawnProjectile(enemy) {
@@ -525,6 +532,13 @@ function updatePlaying(dt) {
   for (const enemy of state.enemies) {
     enemy.wobble += dt * 1.5;
     enemy.cooldown -= dt;
+    enemy.bubbleTimer -= dt;
+    if (enemy.bubbleTimer <= 0) {
+      const lines = ENEMY_BUBBLES[enemy.id];
+      enemy.bubbleIndex = (enemy.bubbleIndex + 1) % lines.length;
+      enemy.bubbleText = lines[enemy.bubbleIndex];
+      enemy.bubbleTimer = randomBetween(2.4, 4.2);
+    }
     const spawnRate = config.baseSpawn + config.spawnRamp * intensity;
     const shotWindow = 1 / spawnRate;
     if (enemy.cooldown <= 0 && state.projectiles.length < config.maxProjectiles) {
@@ -806,7 +820,40 @@ function drawEnemies() {
     const y = 46 + bob;
 
     drawEnemyFigure(enemy, x, y);
+    drawSpeechBubble(enemy, x, y - 14);
   }
+}
+
+function drawSpeechBubble(enemy, x, y) {
+  const text = enemy.bubbleText || ENEMY_BUBBLES[enemy.id][0];
+  ctx.save();
+  ctx.font = "bold 12px sans-serif";
+  const textWidth = ctx.measureText(text).width;
+  const bubbleWidth = textWidth + 22;
+  const bubbleHeight = 26;
+  const bubbleX = x - bubbleWidth / 2;
+  const bubbleY = y - 42;
+
+  ctx.fillStyle = "rgba(255, 250, 236, 0.96)";
+  ctx.strokeStyle = enemy.id === "trump" ? "#ff9a42" : "#3d4657";
+  ctx.lineWidth = 2;
+  roundRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight, 12);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(x - 7, bubbleY + bubbleHeight);
+  ctx.lineTo(x + 2, bubbleY + bubbleHeight);
+  ctx.lineTo(x - 2, bubbleY + bubbleHeight + 10);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#2a2135";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, x, bubbleY + bubbleHeight / 2 + 1);
+  ctx.restore();
 }
 
 function drawEnemyFigure(enemy, x, y) {
