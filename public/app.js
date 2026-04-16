@@ -35,6 +35,7 @@ const state = {
   enemies: [],
   keys: { left: false, right: false },
   pendingSwing: false,
+  throwBandIndex: 0,
   lastTime: 0,
   musicStarted: false,
   muted: false
@@ -144,6 +145,7 @@ function startGame() {
   state.flashes = [];
   state.player = createPlayer();
   state.pendingSwing = false;
+  state.throwBandIndex = 0;
   resetPanels();
   prepareLevel(1);
   updateMessage("Level 1: Trump hurls stones. Tap Space to swat them with the squeegee.");
@@ -157,6 +159,9 @@ function prepareLevel(levelNumber) {
   state.projectiles = [];
   state.particles = [];
   state.flashes = [];
+  state.pendingSwing = false;
+  state.throwBandIndex = 0;
+  resetPanels();
   state.enemies = config.throwers.map(thrower => ({
     ...thrower,
     wobble: Math.random() * Math.PI * 2,
@@ -167,7 +172,7 @@ function prepareLevel(levelNumber) {
 function advanceLevel() {
   if (state.level === 1) {
     prepareLevel(2);
-    updateMessage("Level 2: Ed Miliband joins in with cash bundles. Keep swinging and save at least one panel.");
+    updateMessage("Level 2: fresh panels are online. Trump and Ed now attack across the full solar farm.");
     playFx("level-up");
     return;
   }
@@ -416,14 +421,19 @@ function randomBetween(min, max) {
   return min + Math.random() * (max - min);
 }
 
+function nextThrowTargetX() {
+  const bands = 8;
+  const bandWidth = (WIDTH - 160) / bands;
+  const useSequentialBand = Math.random() < 0.7;
+  const bandIndex = useSequentialBand
+    ? state.throwBandIndex++ % bands
+    : Math.floor(Math.random() * bands);
+  const bandStart = 80 + bandIndex * bandWidth;
+  return bandStart + bandWidth / 2 + randomBetween(-bandWidth * 0.32, bandWidth * 0.32);
+}
+
 function spawnProjectile(enemy) {
-  const alivePanels = state.panels.filter(panel => panel.hp > 0);
-  const targetPanel = alivePanels.length
-    ? alivePanels[Math.floor(Math.random() * alivePanels.length)]
-    : null;
-  const targetX = Math.random() < 0.5
-    ? (targetPanel ? targetPanel.x + targetPanel.width / 2 : WIDTH / 2)
-    : randomBetween(80, WIDTH - 80);
+  const targetX = nextThrowTargetX();
   const dx = targetX - enemy.x;
   const dy = state.player.y - 40;
   const travel = Math.max(Math.hypot(dx, dy), 1);
@@ -465,6 +475,14 @@ function updatePlaying(dt) {
   }
 
   state.levelTime = Math.max(0, state.levelTime - dt);
+  if (state.levelTime <= 0) {
+    if (countAlivePanels() > 0) {
+      advanceLevel();
+    } else {
+      gameOver();
+    }
+    return;
+  }
 
   const config = levelConfigs[state.level];
   const elapsed = LEVEL_DURATION - state.levelTime;
@@ -505,14 +523,6 @@ function updatePlaying(dt) {
   if (countAlivePanels() <= 0) {
     gameOver();
     return;
-  }
-
-  if (state.levelTime <= 0) {
-    if (countAlivePanels() > 0) {
-      advanceLevel();
-    } else {
-      gameOver();
-    }
   }
 }
 
