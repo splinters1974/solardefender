@@ -16,7 +16,7 @@
       "noBid": "Low, Approval Needed"
     },
     "messages": {
-      "warning": "One or more key criteria landed at the warning score. Review carefully before proceeding.",
+      "warning": "One or more flagged responses landed at the warning score. Review carefully before proceeding.",
       "sweetSpot": "This opportunity is in the sweet spot and should be progressed.",
       "outsideSweetSpot": "This opportunity is outside the sweet spot and should be treated as a no bid unless approved."
     }

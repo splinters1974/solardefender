@@ -75,6 +75,15 @@ function formatDateStamp(date: Date) {
   ].join("-");
 }
 
+function formatWeightPercentage(weight: number) {
+  const numericWeight = Number(weight || 0) * 100;
+  const rounded =
+    Math.abs(numericWeight - Math.round(numericWeight)) < 0.01
+      ? Math.round(numericWeight)
+      : Math.round(numericWeight * 10) / 10;
+  return `${rounded}%`;
+}
+
 export function buildAssessmentId(payload: any) {
   const dateStamp = formatDateStamp(new Date());
   const projectSlug = slugify(
@@ -138,10 +147,9 @@ export function buildReportLines(payload: any) {
     lines.push(`${section.name} - ${section.score}`);
     for (const question of section.questions) {
       lines.push(`- ${question.text}`);
-      lines.push(`  Weight: ${question.weight}`);
+      lines.push(`  Weight: ${formatWeightPercentage(question.weight)}`);
       lines.push(`  Score: ${question.score}`);
       lines.push(`  Option: ${question.label}`);
-      lines.push(`  Key Criterion: ${question.keyCriterion ? "Yes" : "No"}`);
       if (question.comment) {
         lines.push(`  Comment: ${question.comment}`);
       }

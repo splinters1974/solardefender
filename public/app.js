@@ -188,6 +188,19 @@ function round(value) {
   return Math.round(value * 10) / 10;
 }
 
+function formatWeightPercentage(weight) {
+  const numericWeight = Number(weight || 0) * 100;
+  const rounded =
+    Math.abs(numericWeight - Math.round(numericWeight)) < 0.01
+      ? Math.round(numericWeight)
+      : Math.round(numericWeight * 10) / 10;
+  return `${rounded}%`;
+}
+
+function clampScore(value) {
+  return Math.max(0, Math.min(100, Number(value) || 0));
+}
+
 function renderAll() {
   document.getElementById("app-title").textContent = state.config.appTitle;
   renderTemplatePicker();
@@ -242,6 +255,7 @@ function renderAssessmentForm() {
       const questionId = event.target.dataset.questionId;
       state.assessment.responses[questionId].score = Number(event.target.value);
       state.assessment.responses[questionId].label = event.target.dataset.label;
+      syncScoreSelection(questionId);
       renderSummary();
     });
   });
@@ -251,6 +265,8 @@ function renderAssessmentForm() {
       state.assessment.responses[event.target.dataset.comment].comment = event.target.value;
     });
   });
+
+  syncAllScoreSelections();
 }
 
 function renderMetadataField(field) {
@@ -334,15 +350,12 @@ function renderQuestion(question) {
     .join("");
 
   return `
-    <fieldset class="question-row ${question.keyCriterion ? "is-key" : ""}">
+    <fieldset class="question-row">
       <div class="question-main">
         <legend>${escapeHtml(question.text)}</legend>
-        <div class="helper">
-          ${question.keyCriterion ? "Key criterion" : "Standard criterion"}
-        </div>
       </div>
       <div class="question-weight">
-        <span>${question.weight}</span>
+        <span>${formatWeightPercentage(question.weight)}</span>
       </div>
       <div class="score-cells">
         ${scoreGuide}
@@ -351,7 +364,7 @@ function renderQuestion(question) {
         <textarea
           id="comment-${question.id}"
           data-comment="${question.id}"
-          placeholder="Notes, risks, mitigation or rationale"
+          placeholder="Comments, risks, mitigation, rationale, or next steps"
         >${escapeHtml(response.comment || "")}</textarea>
       </div>
     </fieldset>
@@ -364,7 +377,7 @@ function renderSummary() {
   const attractiveness = result.sectionScores.attractiveness ?? 0;
   const feasibility = result.sectionScores.feasibility ?? 0;
   const warningList = result.warningQuestions.length
-    ? `<div class="helper"><strong>Flagged key criteria:</strong> ${result.warningQuestions
+    ? `<div class="helper"><strong>Flagged responses:</strong> ${result.warningQuestions
         .map(question => escapeHtml(question.text))
         .join("; ")}</div>`
     : "";
@@ -399,8 +412,8 @@ function renderSummary() {
 }
 
 function renderDecisionMatrix(result, attractiveness, feasibility) {
-  const top = `${100 - Math.max(0, Math.min(100, feasibility))}%`;
-  const left = `${Math.max(0, Math.min(100, attractiveness))}%`;
+  const top = `${100 - clampScore(feasibility)}%`;
+  const left = `${clampScore(attractiveness)}%`;
 
   return `
     <div class="matrix-card">
@@ -423,7 +436,7 @@ function renderDecisionMatrix(result, attractiveness, feasibility) {
         </div>
         <div class="matrix-axis matrix-axis-y">Feasibility</div>
         <div class="matrix-axis matrix-axis-x">Attractiveness</div>
-        <div class="matrix-marker" style="top:${top}; left:${left};">
+        <div class="matrix-marker" style="top:clamp(13px, ${top}, calc(100% - 13px)); left:clamp(13px, ${left}, calc(100% - 13px));">
           <span></span>
         </div>
       </div>
@@ -460,7 +473,7 @@ function renderAdmin() {
           <input id="admin-min-threshold" type="number" value="${state.config.decisionRules.minimumThreshold}" />
         </div>
         <div class="field">
-          <label>Key Criterion Warning Score</label>
+          <label>Warning Score Threshold</label>
           <input id="admin-warning-score" type="number" value="${state.config.decisionRules.keyCriterionWarningScore}" />
         </div>
         <div class="field">
@@ -575,15 +588,8 @@ function renderAdminQuestion(question, templateIndex, sectionIndex, questionInde
       </div>
       <div class="question-meta">
         <div class="field">
-          <label>Weight</label>
-          <input data-admin-question-weight="${key}" type="number" step="0.01" value="${question.weight}" />
-        </div>
-        <div class="field">
-          <label>Key Criterion</label>
-          <select data-admin-question-key="${key}">
-            <option value="true" ${question.keyCriterion ? "selected" : ""}>Yes</option>
-            <option value="false" ${!question.keyCriterion ? "selected" : ""}>No</option>
-          </select>
+          <label>Weight (%)</label>
+          <input data-admin-question-weight="${key}" type="number" step="0.1" min="0" value="${Number(question.weight || 0) * 100}" />
         </div>
         <div class="field">
           <label>Comment Required</label>
@@ -696,12 +702,7 @@ function bindAdminEvents() {
   });
   document.querySelectorAll("[data-admin-question-weight]").forEach(input => {
     input.addEventListener("input", event => {
-      getQuestion(event.target.dataset.adminQuestionWeight).weight = Number(event.target.value);
-    });
-  });
-  document.querySelectorAll("[data-admin-question-key]").forEach(input => {
-    input.addEventListener("change", event => {
-      getQuestion(event.target.dataset.adminQuestionKey).keyCriterion = event.target.value === "true";
+      getQuestion(event.target.dataset.adminQuestionWeight).weight = Number(event.target.value) / 100;
     });
   });
   document.querySelectorAll("[data-admin-question-comment-required]").forEach(input => {
@@ -769,6 +770,18 @@ function bindAdminEvents() {
       renderAdmin();
     });
   });
+}
+
+function syncScoreSelection(questionId) {
+  document
+    .querySelectorAll(`.score-cell input[name="${CSS.escape(questionId)}"]`)
+    .forEach(input => {
+      input.closest(".score-cell")?.classList.toggle("is-selected", input.checked);
+    });
+}
+
+function syncAllScoreSelections() {
+  Object.keys(state.assessment.responses || {}).forEach(syncScoreSelection);
 }
 
 async function saveConfig() {
