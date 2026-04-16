@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Solar Defender</title>
+    <link rel="stylesheet" href="./public/styles.css" />
+  </head>
+  <body>
+    <div class="game-shell">
+      <header class="marquee">
+        <p class="marquee-kicker">ATARI STYLE PANEL DEFENCE</p>
+        <h1>SOLAR DEFENDER</h1>
+        <p class="marquee-copy">
+          Guard the solar farm with your cleaning squeegee. Survive two 75-second waves and keep at least
+          one panel intact.
+        </p>
+      </header>
+
+      <main class="cabinet">
+        <section class="status-panel">
+          <div class="status-row">
+            <div class="status-card">
+              <span class="label">Level</span>
+              <strong id="level-label">1</strong>
+            </div>
+            <div class="status-card">
+              <span class="label">Time</span>
+              <strong id="timer-label">75</strong>
+            </div>
+            <div class="status-card">
+              <span class="label">Panels</span>
+              <strong id="panels-label">20</strong>
+            </div>
+            <div class="status-card">
+              <span class="label">Score</span>
+              <strong id="score-label">0</strong>
+            </div>
+          </div>
+
+          <div class="status-row secondary">
+            <button id="start-button" class="arcade-button" type="button">Start Game</button>
+            <button id="mute-button" class="arcade-button arcade-button-alt" type="button">Sound On</button>
+          </div>
+
+          <div id="message-box" class="message-box">
+            Press start, then move with the arrow keys or A/D. Hold Space to raise the squeegee shield.
+          </div>
+        </section>
+
+        <section class="screen-shell">
+          <canvas id="game" width="960" height="640" aria-label="Solar Defender game canvas"></canvas>
+        </section>
+
+        <section class="controls-panel">
+          <div class="control-card">
+            <h2>How To Play</h2>
+            <p>Move left and right above the panel array.</p>
+            <p>Hold the squeegee up to block stones and flying cash.</p>
+            <p>If all 20 panels are smashed, the run is over.</p>
+            <p>Each level lasts 75 seconds. Keep one panel alive to advance or win.</p>
+          </div>
+
+          <div class="touch-controls">
+            <button id="left-button" class="touch-button" type="button">Left</button>
+            <button id="shield-button" class="touch-button touch-button-main" type="button">Shield</button>
+            <button id="right-button" class="touch-button" type="button">Right</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./public/app.js"></script>
+  </body>
+</html>
