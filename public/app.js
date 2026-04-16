@@ -820,19 +820,23 @@ function drawEnemies() {
     const y = 46 + bob;
 
     drawEnemyFigure(enemy, x, y);
-    drawSpeechBubble(enemy, x, y - 14);
+    drawSpeechBubble(enemy, x, y);
   }
 }
 
 function drawSpeechBubble(enemy, x, y) {
   const text = enemy.bubbleText || ENEMY_BUBBLES[enemy.id][0];
+  const side = enemy.id === "trump" ? "right" : "left";
   ctx.save();
   ctx.font = "bold 12px sans-serif";
   const textWidth = ctx.measureText(text).width;
   const bubbleWidth = textWidth + 22;
   const bubbleHeight = 26;
-  const bubbleX = x - bubbleWidth / 2;
-  const bubbleY = y - 42;
+  const bubbleX = side === "right" ? x + 34 : x - bubbleWidth - 34;
+  const bubbleY = y - 8;
+  const tailBaseX = side === "right" ? bubbleX : bubbleX + bubbleWidth;
+  const tailTipX = side === "right" ? x + 16 : x - 16;
+  const tailTipY = y + 8;
 
   ctx.fillStyle = "rgba(255, 250, 236, 0.96)";
   ctx.strokeStyle = enemy.id === "trump" ? "#ff9a42" : "#3d4657";
@@ -842,9 +846,9 @@ function drawSpeechBubble(enemy, x, y) {
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.moveTo(x - 7, bubbleY + bubbleHeight);
-  ctx.lineTo(x + 2, bubbleY + bubbleHeight);
-  ctx.lineTo(x - 2, bubbleY + bubbleHeight + 10);
+  ctx.moveTo(tailBaseX, bubbleY + 10);
+  ctx.lineTo(tailBaseX, bubbleY + 18);
+  ctx.lineTo(tailTipX, tailTipY);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
