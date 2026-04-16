@@ -1,949 +1,881 @@
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const ui = {
+  level: document.getElementById("level-label"),
+  timer: document.getElementById("timer-label"),
+  panels: document.getElementById("panels-label"),
+  score: document.getElementById("score-label"),
+  message: document.getElementById("message-box"),
+  start: document.getElementById("start-button"),
+  mute: document.getElementById("mute-button"),
+  left: document.getElementById("left-button"),
+  right: document.getElementById("right-button"),
+  shield: document.getElementById("shield-button")
+};
+
+const WIDTH = canvas.width;
+const HEIGHT = canvas.height;
+const LEVEL_DURATION = 75;
+const PANEL_COUNT = 20;
+const PANEL_HP = 3;
+const PLAYER_SPEED = 360;
+const PROJECTILE_RADIUS = 16;
+
 const state = {
-  config: null,
-  assessment: null,
-  reports: [],
-  latestReportUrl: "",
-  adminPassword: sessionStorage.getItem("adminPassword") || "",
-  adminUnlocked: sessionStorage.getItem("adminUnlocked") === "true"
+  screen: "title",
+  level: 1,
+  levelTime: LEVEL_DURATION,
+  score: 0,
+  panels: [],
+  player: createPlayer(),
+  projectiles: [],
+  particles: [],
+  flashes: [],
+  enemies: [],
+  keys: { left: false, right: false, shield: false },
+  lastTime: 0,
+  musicStarted: false,
+  muted: false
 };
 
-const ADMIN_PASSWORD = "ameresco2026";
-
-const metadataDefinitions = [
-  { key: "projectDescription", label: "Project Description", type: "text" },
-  { key: "client", label: "Client", type: "text" },
-  { key: "targetSector", label: "Target Sector", type: "text" },
-  { key: "targetMarketLeadProduct", label: "Target Market Lead Product", type: "text" },
-  {
-    key: "multiTechOpportunity",
-    label: "Multi-Tech Opportunity",
-    type: "select",
-    options: ["", "Yes", "No"]
-  },
-  { key: "opportunityManagedBy", label: "Opportunity Managed By", type: "text" },
-  { key: "estimatedCloseDate", label: "Estimated Close Date", type: "date" },
-  { key: "approximateLov", label: "Approximate Opportunity LOV (£m)", type: "text" },
-  { key: "salesforceOpportunityUrl", label: "Salesforce Opportunity URL", type: "url" },
-  { key: "approvedByName", label: "Approved By Name", type: "text" },
-  { key: "approvedByTitle", label: "Approved By Title", type: "text" }
-];
-
-const tabs = Array.from(document.querySelectorAll(".tab"));
-const panels = {
-  assessment: document.getElementById("assessment-panel"),
-  admin: document.getElementById("admin-panel"),
-  reports: document.getElementById("reports-panel")
+const audioState = {
+  ctx: null,
+  master: null,
+  musicGain: null,
+  fxGain: null,
+  nextNoteAt: 0,
+  melodyStep: 0,
+  bassStep: 0,
+  musicTimer: null
 };
 
-tabs.forEach(tab => {
-  tab.addEventListener("click", () => {
-    if (tab.dataset.tab === "admin" && !ensureAdminAccess()) {
-      return;
-    }
-    tabs.forEach(item => item.classList.toggle("is-active", item === tab));
-    Object.entries(panels).forEach(([key, panel]) => {
-      panel.classList.toggle("is-active", key === tab.dataset.tab);
-    });
-  });
-});
-
-document.getElementById("template-select").addEventListener("change", event => {
-  createAssessment(event.target.value);
-  renderAll();
-});
-
-document.getElementById("save-config").addEventListener("click", saveConfig);
-document.getElementById("reset-config").addEventListener("click", resetConfig);
-document.getElementById("save-report").addEventListener("click", saveAssessmentReport);
-
-init();
-
-async function init() {
-  const [config, reports] = await Promise.all([
-    fetchJson("/api/config"),
-    fetchJson("/api/assessments")
-  ]);
-
-  state.config = config;
-  state.reports = reports;
-  createAssessment(config.templates[0]?.id);
-  renderAll();
-}
-
-async function fetchJson(url, options) {
-  const response = await fetch(url, options);
-  if (!response.ok) {
-    throw new Error(`Request failed for ${url}`);
-  }
-  return response.json();
-}
-
-function deepClone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-
-function createAssessment(templateId) {
-  const template = getTemplate(templateId);
-  const metadata = Object.fromEntries(metadataDefinitions.map(field => [field.key, ""]));
-  const responses = {};
-  template.sections.forEach(section => {
-    section.questions.forEach(question => {
-      responses[question.id] = { score: null, label: "", comment: "" };
-    });
-  });
-  state.assessment = { templateId, metadata, responses };
-  state.latestReportUrl = "";
-}
-
-function getTemplate(templateId = state.assessment?.templateId) {
-  return state.config.templates.find(template => template.id === templateId);
-}
-
-function calculateResult() {
-  const template = getTemplate();
-  const rules = state.config.decisionRules;
-  const sections = template.sections.map(section => {
-    const answeredQuestions = section.questions.map(question => {
-      const response = state.assessment.responses[question.id] || {};
-      return {
-        ...question,
-        score: Number(response.score),
-        label: response.label || "",
-        comment: response.comment || ""
-      };
-    });
-
-    const weightTotal = answeredQuestions.reduce((sum, question) => sum + Number(question.weight || 0), 0);
-    const weightedPoints = answeredQuestions.reduce(
-      (sum, question) => sum + (question.score || 0) * Number(question.weight || 0),
-      0
-    );
-    const answeredCount = answeredQuestions.filter(question => Number.isFinite(question.score) && question.score > 0).length;
-    const complete = answeredCount === answeredQuestions.length;
-    const normalized = weightTotal > 0 ? (weightedPoints / weightTotal) * 20 : 0;
-
-    return {
-      id: section.id,
-      name: section.name,
-      score: round(normalized),
-      complete,
-      questions: answeredQuestions
-    };
-  });
-
-  const complete = sections.every(section => section.complete);
-  const sectionScores = Object.fromEntries(sections.map(section => [section.id, section.score]));
-  const totalScore = round(
-    sections.reduce((sum, section) => sum + section.score, 0) / Math.max(sections.length, 1)
-  );
-
-  const warningQuestions = sections
-    .flatMap(section => section.questions)
-    .filter(question => question.keyCriterion && question.score <= rules.keyCriterionWarningScore);
-
-  let decision = "Complete all questions";
-  let priority = "Pending";
-  let summaryMessage = "Finish the assessment to see the final bid / no bid recommendation.";
-  let tone = "warning";
-  let isSweetSpot = false;
-
-  if (complete) {
-    const attractiveness = sectionScores.attractiveness ?? totalScore;
-    const feasibility = sectionScores.feasibility ?? totalScore;
-    const highPriority =
-      attractiveness >= rules.highPriorityThreshold && feasibility >= rules.highPriorityThreshold;
-    const belowMinimum =
-      attractiveness < rules.minimumThreshold || feasibility < rules.minimumThreshold;
-
-    if (highPriority) {
-      decision = rules.decisions.highPriority;
-      priority = rules.priorities.highPriority;
-      summaryMessage = rules.messages.sweetSpot;
-      tone = "success";
-      isSweetSpot = true;
-    } else if (belowMinimum) {
-      decision = rules.decisions.noBid;
-      priority = rules.priorities.noBid;
-      summaryMessage = rules.messages.outsideSweetSpot;
-      tone = "danger";
-    } else {
-      decision = rules.decisions.standardBid;
-      priority = rules.priorities.standardBid;
-      summaryMessage = "This opportunity is in the workable zone but not at the highest priority level.";
-      tone = "warning";
-      isSweetSpot = true;
-    }
-  }
-
-  return {
-    complete,
-    sections,
-    sectionScores,
-    totalScore,
-    decision,
-    priority,
-    summaryMessage,
-    tone,
-    isSweetSpot,
-    warningMessage: warningQuestions.length ? rules.messages.warning : "",
-    warningQuestions,
-    generatedAt: new Date().toISOString()
-  };
-}
-
-function round(value) {
-  return Math.round(value * 10) / 10;
-}
-
-function formatWeightPercentage(weight) {
-  const numericWeight = Number(weight || 0) * 100;
-  const rounded =
-    Math.abs(numericWeight - Math.round(numericWeight)) < 0.01
-      ? Math.round(numericWeight)
-      : Math.round(numericWeight * 10) / 10;
-  return `${rounded}%`;
-}
-
-function clampScore(value) {
-  return Math.max(0, Math.min(100, Number(value) || 0));
-}
-
-function renderAll() {
-  document.getElementById("app-title").textContent = state.config.appTitle;
-  renderTemplatePicker();
-  renderAssessmentForm();
-  renderSummary();
-  renderAdmin();
-  renderReports();
-}
-
-function renderTemplatePicker() {
-  const select = document.getElementById("template-select");
-  select.innerHTML = state.config.templates
-    .map(
-      template =>
-        `<option value="${template.id}" ${template.id === state.assessment.templateId ? "selected" : ""}>${escapeHtml(
-          template.name
-        )}</option>`
-    )
-    .join("");
-}
-
-function renderAssessmentForm() {
-  const template = getTemplate();
-  const form = document.getElementById("assessment-form");
-  const fieldsHtml = metadataDefinitions
-    .filter(field => template.metadataFields.includes(field.key))
-    .map(field => renderMetadataField(field))
-    .join("");
-  const sectionsHtml = template.sections.map(renderSectionBlock).join("");
-
-  form.innerHTML = `
-    <div class="section-block">
-      <div class="section-heading">
-        <div>
-          <h3>${escapeHtml(template.name)}</h3>
-          <p class="helper">${escapeHtml(template.description || "")}</p>
-        </div>
-      </div>
-      <div class="fields-grid">${fieldsHtml}</div>
-    </div>
-    ${sectionsHtml}
-  `;
-
-  form.querySelectorAll("[data-meta]").forEach(input => {
-    input.addEventListener("input", event => {
-      state.assessment.metadata[event.target.dataset.meta] = event.target.value;
-    });
-  });
-
-  form.querySelectorAll("[data-score]").forEach(input => {
-    input.addEventListener("change", event => {
-      const questionId = event.target.dataset.questionId;
-      state.assessment.responses[questionId].score = Number(event.target.value);
-      state.assessment.responses[questionId].label = event.target.dataset.label;
-      syncScoreSelection(questionId);
-      renderSummary();
-    });
-  });
-
-  form.querySelectorAll("[data-comment]").forEach(input => {
-    input.addEventListener("input", event => {
-      state.assessment.responses[event.target.dataset.comment].comment = event.target.value;
-    });
-  });
-
-  syncAllScoreSelections();
-}
-
-function renderMetadataField(field) {
-  const value = state.assessment.metadata[field.key] || "";
-  if (field.type === "select") {
-    return `
-      <div class="field">
-        <label>${escapeHtml(field.label)}</label>
-        <select data-meta="${field.key}">
-          ${field.options
-            .map(option => `<option value="${escapeHtml(option)}" ${option === value ? "selected" : ""}>${escapeHtml(option || "Please select")}</option>`)
-            .join("")}
-        </select>
-      </div>
-    `;
-  }
-
-  return `
-    <div class="field">
-      <label>${escapeHtml(field.label)}</label>
-      <input type="${field.type}" value="${escapeAttribute(value)}" data-meta="${field.key}" />
-    </div>
-  `;
-}
-
-function renderSectionBlock(section) {
-  const questions = section.questions.map(question => renderQuestion(question)).join("");
-  return `
-    <div class="section-block">
-      <div class="section-heading">
-        <div>
-          <p class="section-label">Scoring Section</p>
-          <h3>${escapeHtml(section.name)}</h3>
-        </div>
-      </div>
-      <div class="question-list">
-        ${questions}
-      </div>
-    </div>
-  `;
-}
-
-function renderQuestion(question) {
-  const response = state.assessment.responses[question.id] || {};
-  const scoreGuide = [1, 2, 3, 4, 5]
-    .map(scoreValue => {
-      const option = question.options.find(item => Number(item.score) === scoreValue);
-      const optionLabel = option ? option.label : "—";
-      const checked = Number(response.score) === scoreValue && response.label === optionLabel;
-
-      return `
-        <label class="score-cell ${checked ? "is-selected" : ""} ${option ? "" : "is-empty"}">
-          ${option ? `
-            <input
-              type="radio"
-              name="${question.id}"
-              value="${option.score}"
-              data-score="${option.score}"
-              data-question-id="${question.id}"
-              data-label="${escapeAttribute(option.label)}"
-              ${checked ? "checked" : ""}
-            />
-          ` : ""}
-          <span class="score-cell-number">${scoreValue}</span>
-          <span class="score-cell-label">${escapeHtml(optionLabel)}</span>
-        </label>
-      `;
-    })
-    .join("");
-
-  return `
-    <fieldset class="question-row">
-      <div class="question-main">
-        <span class="question-block-label">Criterion</span>
-        <legend>${escapeHtml(question.text)}</legend>
-      </div>
-      <div class="question-weight">
-        <span class="question-block-label">Weight</span>
-        <span>${formatWeightPercentage(question.weight)}</span>
-      </div>
-      <div class="question-score-panel">
-        <div class="question-score-header">
-          <span class="question-block-label">Select a score</span>
-          <div class="score-option-legend">
-            <span>1</span>
-            <span>2</span>
-            <span>3</span>
-            <span>4</span>
-            <span>5</span>
-          </div>
-        </div>
-        <div class="score-cells">
-          ${scoreGuide}
-        </div>
-      </div>
-      <div class="question-comment">
-        <span class="question-block-label">Comments</span>
-        <textarea
-          id="comment-${question.id}"
-          data-comment="${question.id}"
-          placeholder="Comments, risks, mitigation, rationale, or next steps"
-        >${escapeHtml(response.comment || "")}</textarea>
-      </div>
-    </fieldset>
-  `;
-}
-
-function renderSummary() {
-  const summary = document.getElementById("score-summary");
-  const result = calculateResult();
-  const attractiveness = result.sectionScores.attractiveness ?? 0;
-  const feasibility = result.sectionScores.feasibility ?? 0;
-  const warningList = result.warningQuestions.length
-    ? `<div class="helper"><strong>Flagged responses:</strong> ${result.warningQuestions
-        .map(question => escapeHtml(question.text))
-        .join("; ")}</div>`
-    : "";
-
-  summary.innerHTML = `
-    <div class="decision-banner ${result.tone}">
-      ${escapeHtml(result.decision)}
-    </div>
-    <div class="helper">${escapeHtml(result.summaryMessage)}</div>
-    ${result.warningMessage ? `<div class="helper"><strong>Warning:</strong> ${escapeHtml(result.warningMessage)}</div>` : ""}
-    ${warningList}
-    ${renderDecisionMatrix(result, attractiveness, feasibility)}
-    <div class="metrics-grid">
-      <div class="metric">
-        <small>Attractiveness</small>
-        <span class="metric-value">${attractiveness}</span>
-      </div>
-      <div class="metric">
-        <small>Feasibility</small>
-        <span class="metric-value">${feasibility}</span>
-      </div>
-      <div class="metric">
-        <small>Total</small>
-        <span class="metric-value">${result.totalScore}</span>
-      </div>
-      <div class="metric">
-        <small>Priority</small>
-        <span class="metric-value" style="font-size:1.2rem">${escapeHtml(result.priority)}</span>
-      </div>
-    </div>
-  `;
-}
-
-function renderDecisionMatrix(result, attractiveness, feasibility) {
-  const top = `${100 - clampScore(feasibility)}%`;
-  const left = `${clampScore(attractiveness)}%`;
-
-  return `
-    <div class="matrix-card">
-      <div class="matrix-header">
-        <div>
-          <strong>Bid Position Map</strong>
-          <div class="helper">Attractiveness on the horizontal axis, feasibility on the vertical axis.</div>
-        </div>
-        <span class="matrix-badge ${result.tone}">${escapeHtml(result.decision)}</span>
-      </div>
-      <div class="matrix">
-        <div class="matrix-zone no-bid">
-          <span>No Bid</span>
-        </div>
-        <div class="matrix-zone in-scope">
-          <span>In Scope with Risks Highlighted</span>
-        </div>
-        <div class="matrix-zone sweet-spot">
-          <span>Sweet Spot</span>
-        </div>
-        <div class="matrix-axis matrix-axis-y">Feasibility</div>
-        <div class="matrix-axis matrix-axis-x">Attractiveness</div>
-        <div class="matrix-marker" style="top:clamp(13px, ${top}, calc(100% - 13px)); left:clamp(13px, ${left}, calc(100% - 13px));">
-          <span></span>
-        </div>
-      </div>
-      <div class="matrix-foot">
-        <span>X ${attractiveness}</span>
-        <span>Y ${feasibility}</span>
-      </div>
-    </div>
-  `;
-}
-
-function renderAdmin() {
-  const container = document.getElementById("admin-content");
-  if (!state.adminUnlocked) {
-    container.innerHTML = `
-      <div class="field admin-lock-card">
-        <label>Admin Area Locked</label>
-        <p class="helper">Enter the admin password to view and edit the scoring configuration.</p>
-        <button id="unlock-admin" class="button button-primary" type="button">Unlock Admin</button>
-      </div>
-    `;
-
-    document.getElementById("unlock-admin")?.addEventListener("click", () => {
-      if (ensureAdminAccess()) {
-        renderAdmin();
+const levelConfigs = {
+  1: {
+    name: "Trump's Stone Barrage",
+    baseSpawn: 1.2,
+    spawnRamp: 0.5,
+    maxProjectiles: 7,
+    throwers: [
+      {
+        id: "trump",
+        x: WIDTH / 2,
+        kind: "stone",
+        face: "#ff9a42",
+        suit: "#12386d",
+        hair: "#ffe171"
       }
-    });
-    return;
+    ]
+  },
+  2: {
+    name: "Cash Storm Coalition",
+    baseSpawn: 1.8,
+    spawnRamp: 0.85,
+    maxProjectiles: 12,
+    throwers: [
+      {
+        id: "trump",
+        x: WIDTH * 0.32,
+        kind: "stone",
+        face: "#ff9a42",
+        suit: "#12386d",
+        hair: "#ffe171"
+      },
+      {
+        id: "miliband",
+        x: WIDTH * 0.68,
+        kind: "cash",
+        face: "#f1c49c",
+        suit: "#3d4657",
+        hair: "#1f2329"
+      }
+    ]
   }
+};
 
-  const templateHtml = state.config.templates.map(renderAdminTemplate).join("");
-
-  container.innerHTML = `
-    <div class="section-block">
-      <h3>Application Settings</h3>
-      <div class="admin-grid">
-        <div class="field">
-          <label>App Title</label>
-          <input id="admin-app-title" value="${escapeAttribute(state.config.appTitle)}" />
-        </div>
-        <div class="field">
-          <label>Organisation Name</label>
-          <input id="admin-org-name" value="${escapeAttribute(state.config.organizationName)}" />
-        </div>
-        <div class="field">
-          <label>High Priority Threshold</label>
-          <input id="admin-high-threshold" type="number" value="${state.config.decisionRules.highPriorityThreshold}" />
-        </div>
-        <div class="field">
-          <label>Minimum Threshold</label>
-          <input id="admin-min-threshold" type="number" value="${state.config.decisionRules.minimumThreshold}" />
-        </div>
-        <div class="field">
-          <label>Warning Score Threshold</label>
-          <input id="admin-warning-score" type="number" value="${state.config.decisionRules.keyCriterionWarningScore}" />
-        </div>
-        <div class="field">
-          <label>High Priority Decision Label</label>
-          <input id="admin-high-decision" value="${escapeAttribute(state.config.decisionRules.decisions.highPriority)}" />
-        </div>
-        <div class="field">
-          <label>Standard Bid Label</label>
-          <input id="admin-standard-decision" value="${escapeAttribute(state.config.decisionRules.decisions.standardBid)}" />
-        </div>
-        <div class="field">
-          <label>No Bid Label</label>
-          <input id="admin-no-decision" value="${escapeAttribute(state.config.decisionRules.decisions.noBid)}" />
-        </div>
-        <div class="field">
-          <label>Sweet Spot Message</label>
-          <textarea id="admin-sweet-message">${escapeHtml(state.config.decisionRules.messages.sweetSpot)}</textarea>
-        </div>
-        <div class="field">
-          <label>Outside Sweet Spot Message</label>
-          <textarea id="admin-outside-message">${escapeHtml(state.config.decisionRules.messages.outsideSweetSpot)}</textarea>
-        </div>
-        <div class="field">
-          <label>Warning Message</label>
-          <textarea id="admin-warning-message">${escapeHtml(state.config.decisionRules.messages.warning)}</textarea>
-        </div>
-      </div>
-    </div>
-    ${templateHtml}
-  `;
-
-  bindAdminEvents();
-}
-
-function renderAdminTemplate(template, templateIndex) {
-  return `
-    <div class="section-block">
-      <div class="surface-header">
-        <div>
-          <p class="section-label">Template ${templateIndex + 1}</p>
-          <h3>${escapeHtml(template.name)}</h3>
-        </div>
-      </div>
-      <div class="admin-grid">
-        <div class="field">
-          <label>Template Name</label>
-          <input data-admin-template-name="${templateIndex}" value="${escapeAttribute(template.name)}" />
-        </div>
-        <div class="field">
-          <label>Description</label>
-          <textarea data-admin-template-description="${templateIndex}">${escapeHtml(template.description || "")}</textarea>
-        </div>
-      </div>
-      ${template.sections
-        .map((section, sectionIndex) => renderAdminSection(section, templateIndex, sectionIndex))
-        .join("")}
-    </div>
-  `;
-}
-
-function renderAdminSection(section, templateIndex, sectionIndex) {
-  return `
-    <div class="section-block">
-      <div class="surface-header">
-        <div>
-          <p class="section-label">Section</p>
-          <h4>${escapeHtml(section.name)}</h4>
-        </div>
-        <button class="subtle-button" type="button" data-add-question="${templateIndex}:${sectionIndex}">
-          Add Question
-        </button>
-      </div>
-      <div class="admin-grid">
-        <div class="field">
-          <label>Section Name</label>
-          <input
-            data-admin-section-name="${templateIndex}:${sectionIndex}"
-            value="${escapeAttribute(section.name)}"
-          />
-        </div>
-        <div class="field">
-          <label>Score Label</label>
-          <input
-            data-admin-section-label="${templateIndex}:${sectionIndex}"
-            value="${escapeAttribute(section.scoreLabel || "")}"
-          />
-        </div>
-      </div>
-      ${section.questions
-        .map((question, questionIndex) =>
-          renderAdminQuestion(question, templateIndex, sectionIndex, questionIndex)
-        )
-        .join("")}
-    </div>
-  `;
-}
-
-function renderAdminQuestion(question, templateIndex, sectionIndex, questionIndex) {
-  const key = `${templateIndex}:${sectionIndex}:${questionIndex}`;
-  return `
-    <div class="question-card">
-      <div class="surface-header">
-        <div>
-          <p class="section-label">Question ${questionIndex + 1}</p>
-          <h4>${escapeHtml(question.text)}</h4>
-        </div>
-        <button class="subtle-button" type="button" data-remove-question="${key}">Remove</button>
-      </div>
-      <div class="field">
-        <label>Question Text</label>
-        <textarea data-admin-question-text="${key}">${escapeHtml(question.text)}</textarea>
-      </div>
-      <div class="question-meta">
-        <div class="field">
-          <label>Weight (%)</label>
-          <input data-admin-question-weight="${key}" type="number" step="0.1" min="0" value="${Number(question.weight || 0) * 100}" />
-        </div>
-        <div class="field">
-          <label>Comment Required</label>
-          <select data-admin-question-comment-required="${key}">
-            <option value="true" ${question.commentRequired ? "selected" : ""}>Yes</option>
-            <option value="false" ${!question.commentRequired ? "selected" : ""}>No</option>
-          </select>
-        </div>
-      </div>
-      <div class="stack gap-md">
-        ${question.options
-          .map(
-            (option, optionIndex) => `
-              <div class="option-editor">
-                <div class="field">
-                  <label>Option Label</label>
-                  <input
-                    data-admin-option-label="${key}:${optionIndex}"
-                    value="${escapeAttribute(option.label)}"
-                  />
-                </div>
-                <div class="field">
-                  <label>Score</label>
-                  <input
-                    data-admin-option-score="${key}:${optionIndex}"
-                    type="number"
-                    value="${option.score}"
-                  />
-                </div>
-                <button class="subtle-button" type="button" data-remove-option="${key}:${optionIndex}">
-                  Remove
-                </button>
-              </div>
-            `
-          )
-          .join("")}
-        <button class="subtle-button" type="button" data-add-option="${key}">Add Option</button>
-      </div>
-    </div>
-  `;
-}
-
-function bindAdminEvents() {
-  const config = state.config;
-  const getQuestion = key => {
-    const [templateIndex, sectionIndex, questionIndex] = key.split(":").map(Number);
-    return config.templates[templateIndex].sections[sectionIndex].questions[questionIndex];
+function createPlayer() {
+  return {
+    x: WIDTH / 2,
+    y: 430,
+    width: 46,
+    height: 62,
+    shieldWidth: 110,
+    shieldHeight: 16,
+    shieldRaised: false
   };
+}
 
-  document.getElementById("admin-app-title").addEventListener("input", event => {
-    config.appTitle = event.target.value;
-  });
-  document.getElementById("admin-org-name").addEventListener("input", event => {
-    config.organizationName = event.target.value;
-  });
-  document.getElementById("admin-high-threshold").addEventListener("input", event => {
-    config.decisionRules.highPriorityThreshold = Number(event.target.value);
-  });
-  document.getElementById("admin-min-threshold").addEventListener("input", event => {
-    config.decisionRules.minimumThreshold = Number(event.target.value);
-  });
-  document.getElementById("admin-warning-score").addEventListener("input", event => {
-    config.decisionRules.keyCriterionWarningScore = Number(event.target.value);
-  });
-  document.getElementById("admin-high-decision").addEventListener("input", event => {
-    config.decisionRules.decisions.highPriority = event.target.value;
-  });
-  document.getElementById("admin-standard-decision").addEventListener("input", event => {
-    config.decisionRules.decisions.standardBid = event.target.value;
-  });
-  document.getElementById("admin-no-decision").addEventListener("input", event => {
-    config.decisionRules.decisions.noBid = event.target.value;
-  });
-  document.getElementById("admin-sweet-message").addEventListener("input", event => {
-    config.decisionRules.messages.sweetSpot = event.target.value;
-  });
-  document.getElementById("admin-outside-message").addEventListener("input", event => {
-    config.decisionRules.messages.outsideSweetSpot = event.target.value;
-  });
-  document.getElementById("admin-warning-message").addEventListener("input", event => {
-    config.decisionRules.messages.warning = event.target.value;
-  });
+function resetPanels() {
+  const panels = [];
+  const cols = 5;
+  const rows = 4;
+  const panelWidth = 140;
+  const panelHeight = 34;
+  const gapX = 18;
+  const gapY = 14;
+  const totalWidth = cols * panelWidth + (cols - 1) * gapX;
+  const startX = (WIDTH - totalWidth) / 2;
+  const startY = 490;
 
-  document.querySelectorAll("[data-admin-template-name]").forEach(input => {
-    input.addEventListener("input", event => {
-      config.templates[Number(event.target.dataset.adminTemplateName)].name = event.target.value;
-    });
-  });
-  document.querySelectorAll("[data-admin-template-description]").forEach(input => {
-    input.addEventListener("input", event => {
-      config.templates[Number(event.target.dataset.adminTemplateDescription)].description = event.target.value;
-    });
-  });
-  document.querySelectorAll("[data-admin-section-name]").forEach(input => {
-    input.addEventListener("input", event => {
-      const [templateIndex, sectionIndex] = event.target.dataset.adminSectionName.split(":").map(Number);
-      config.templates[templateIndex].sections[sectionIndex].name = event.target.value;
-    });
-  });
-  document.querySelectorAll("[data-admin-section-label]").forEach(input => {
-    input.addEventListener("input", event => {
-      const [templateIndex, sectionIndex] = event.target.dataset.adminSectionLabel.split(":").map(Number);
-      config.templates[templateIndex].sections[sectionIndex].scoreLabel = event.target.value;
-    });
-  });
-  document.querySelectorAll("[data-admin-question-text]").forEach(input => {
-    input.addEventListener("input", event => {
-      getQuestion(event.target.dataset.adminQuestionText).text = event.target.value;
-    });
-  });
-  document.querySelectorAll("[data-admin-question-weight]").forEach(input => {
-    input.addEventListener("input", event => {
-      getQuestion(event.target.dataset.adminQuestionWeight).weight = Number(event.target.value) / 100;
-    });
-  });
-  document.querySelectorAll("[data-admin-question-comment-required]").forEach(input => {
-    input.addEventListener("change", event => {
-      getQuestion(event.target.dataset.adminQuestionCommentRequired).commentRequired = event.target.value === "true";
-    });
-  });
-  document.querySelectorAll("[data-admin-option-label]").forEach(input => {
-    input.addEventListener("input", event => {
-      const parts = event.target.dataset.adminOptionLabel.split(":").map(Number);
-      config.templates[parts[0]].sections[parts[1]].questions[parts[2]].options[parts[3]].label = event.target.value;
-    });
-  });
-  document.querySelectorAll("[data-admin-option-score]").forEach(input => {
-    input.addEventListener("input", event => {
-      const parts = event.target.dataset.adminOptionScore.split(":").map(Number);
-      config.templates[parts[0]].sections[parts[1]].questions[parts[2]].options[parts[3]].score = Number(
-        event.target.value
-      );
-    });
-  });
-
-  document.querySelectorAll("[data-add-question]").forEach(button => {
-    button.addEventListener("click", event => {
-      const [templateIndex, sectionIndex] = event.target.dataset.addQuestion.split(":").map(Number);
-      config.templates[templateIndex].sections[sectionIndex].questions.push({
-        id: `question-${Date.now()}`,
-        text: "New question",
-        weight: 0.1,
-        keyCriterion: false,
-        commentRequired: false,
-        options: [
-          { label: "Low", score: 1 },
-          { label: "Medium", score: 3 },
-          { label: "High", score: 5 }
-        ]
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      panels.push({
+        id: row * cols + col,
+        x: startX + col * (panelWidth + gapX),
+        y: startY + row * (panelHeight + gapY),
+        width: panelWidth,
+        height: panelHeight,
+        hp: PANEL_HP
       });
-      renderAdmin();
-    });
-  });
-  document.querySelectorAll("[data-remove-question]").forEach(button => {
-    button.addEventListener("click", event => {
-      const [templateIndex, sectionIndex, questionIndex] = event.target.dataset.removeQuestion
-        .split(":")
-        .map(Number);
-      config.templates[templateIndex].sections[sectionIndex].questions.splice(questionIndex, 1);
-      renderAdmin();
-    });
-  });
-  document.querySelectorAll("[data-add-option]").forEach(button => {
-    button.addEventListener("click", event => {
-      getQuestion(event.target.dataset.addOption).options.push({ label: "New option", score: 3 });
-      renderAdmin();
-    });
-  });
-  document.querySelectorAll("[data-remove-option]").forEach(button => {
-    button.addEventListener("click", event => {
-      const [templateIndex, sectionIndex, questionIndex, optionIndex] = event.target.dataset.removeOption
-        .split(":")
-        .map(Number);
-      config.templates[templateIndex].sections[sectionIndex].questions[questionIndex].options.splice(
-        optionIndex,
-        1
-      );
-      renderAdmin();
-    });
-  });
-}
-
-function syncScoreSelection(questionId) {
-  document
-    .querySelectorAll(`.score-cell input[name="${CSS.escape(questionId)}"]`)
-    .forEach(input => {
-      input.closest(".score-cell")?.classList.toggle("is-selected", input.checked);
-    });
-}
-
-function syncAllScoreSelections() {
-  Object.keys(state.assessment.responses || {}).forEach(syncScoreSelection);
-}
-
-async function saveConfig() {
-  const status = document.getElementById("admin-status");
-  const currentTemplateId = state.assessment.templateId;
-  if (!ensureAdminAccess()) {
-    status.textContent = "Admin password required to save configuration changes.";
-    return;
-  }
-  status.textContent = "Saving admin changes...";
-  await fetchJson("/api/config", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-admin-password": state.adminPassword
-    },
-    body: JSON.stringify(state.config)
-  });
-  createAssessment(getTemplate(currentTemplateId) ? currentTemplateId : state.config.templates[0].id);
-  renderAll();
-  status.textContent = "Admin changes saved. The assessment view is now using the updated model.";
-}
-
-async function resetConfig() {
-  const status = document.getElementById("admin-status");
-  if (!ensureAdminAccess()) {
-    status.textContent = "Admin password required to reset the configuration.";
-    return;
-  }
-  const response = await fetchJson("/api/config/reset", {
-    method: "POST",
-    headers: {
-      "x-admin-password": state.adminPassword
     }
-  });
-  state.config = response.config;
-  createAssessment(state.config.templates[0].id);
-  renderAll();
-  status.textContent = "Configuration reset to the seeded workbook-based template.";
+  }
+
+  state.panels = panels;
 }
 
-async function saveAssessmentReport() {
-  const result = calculateResult();
-  const status = document.getElementById("save-status");
-  const link = document.getElementById("download-report");
+function startGame() {
+  state.screen = "playing";
+  state.level = 1;
+  state.levelTime = LEVEL_DURATION;
+  state.score = 0;
+  state.projectiles = [];
+  state.particles = [];
+  state.flashes = [];
+  state.player = createPlayer();
+  resetPanels();
+  prepareLevel(1);
+  updateMessage("Level 1: Trump hurls stones. Keep at least one panel standing for 75 seconds.");
+  ensureAudio();
+}
 
-  if (!result.complete) {
-    status.textContent = "Complete every scored question before generating the PDF report.";
-    link.classList.add("is-hidden");
+function prepareLevel(levelNumber) {
+  const config = levelConfigs[levelNumber];
+  state.level = levelNumber;
+  state.levelTime = LEVEL_DURATION;
+  state.projectiles = [];
+  state.particles = [];
+  state.flashes = [];
+  state.enemies = config.throwers.map(thrower => ({
+    ...thrower,
+    wobble: Math.random() * Math.PI * 2,
+    cooldown: randomBetween(0.45, 0.95)
+  }));
+}
+
+function advanceLevel() {
+  if (state.level === 1) {
+    prepareLevel(2);
+    updateMessage("Level 2: Ed Miliband joins in with heavy cash bundles. The barrage gets faster now.");
+    playFx("level-up");
     return;
   }
 
-  status.textContent = "Saving assessment and generating PDF...";
-  const payload = {
-    configSnapshot: deepClone(state.config),
-    assessment: deepClone(state.assessment),
-    result
+  state.screen = "victory";
+  playFx("victory");
+  updateMessage(`Victory. You saved ${countAlivePanels()} panel${countAlivePanels() === 1 ? "" : "s"} and scored ${state.score}.`);
+}
+
+function gameOver() {
+  state.screen = "gameover";
+  playFx("game-over");
+  updateMessage(`Game over. All panels were smashed. Final score: ${state.score}. Press Start Game to try again.`);
+}
+
+function countAlivePanels() {
+  return state.panels.filter(panel => panel.hp > 0).length;
+}
+
+function updateMessage(text) {
+  ui.message.textContent = text;
+}
+
+function setHeld(button, held) {
+  button.classList.toggle("is-held", held);
+}
+
+function bindHold(button, key) {
+  const down = event => {
+    event.preventDefault();
+    state.keys[key] = true;
+    setHeld(button, true);
+    ensureAudio();
+  };
+  const up = event => {
+    event.preventDefault();
+    state.keys[key] = false;
+    setHeld(button, false);
   };
 
-  const response = await fetchJson("/api/assessments", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-
-  status.textContent = `Saved to ${response.pdfFile} and ${response.jsonFile}`;
-  state.latestReportUrl = response.pdfUrl;
-  link.href = response.pdfUrl;
-  link.classList.remove("is-hidden");
-  state.reports = await fetchJson("/api/assessments");
-  renderReports();
+  button.addEventListener("pointerdown", down);
+  button.addEventListener("pointerup", up);
+  button.addEventListener("pointerleave", up);
+  button.addEventListener("pointercancel", up);
 }
 
-function renderReports() {
-  const container = document.getElementById("reports-list");
-  if (!state.reports.length) {
-    container.innerHTML = `<p class="muted">No saved assessments yet.</p>`;
+bindHold(ui.left, "left");
+bindHold(ui.right, "right");
+bindHold(ui.shield, "shield");
+
+ui.start.addEventListener("click", startGame);
+ui.mute.addEventListener("click", toggleMute);
+
+window.addEventListener("keydown", event => {
+  if (event.repeat) {
     return;
   }
 
-  container.innerHTML = state.reports
-    .map(
-      report => `
-        <article class="report-card">
-          <div class="surface-header">
-            <div>
-              <h3>${escapeHtml(report.projectDescription || "Untitled assessment")}</h3>
-              <p class="helper">${escapeHtml(report.client || "")}</p>
-            </div>
-            <a class="button button-secondary" href="/api/reports/${report.id}" target="_blank" rel="noopener">Open PDF</a>
-          </div>
-          <div class="report-meta">
-            <span>Decision: ${escapeHtml(report.decision)}</span>
-            <span>Total Score: ${report.totalScore}</span>
-            <span>Generated: ${formatDate(report.generatedAt)}</span>
-          </div>
-        </article>
-      `
-    )
-    .join("");
+  if (event.code === "ArrowLeft" || event.code === "KeyA") {
+    state.keys.left = true;
+  }
+  if (event.code === "ArrowRight" || event.code === "KeyD") {
+    state.keys.right = true;
+  }
+  if (event.code === "Space") {
+    event.preventDefault();
+    state.keys.shield = true;
+  }
+  if (event.code === "Enter" && state.screen !== "playing") {
+    startGame();
+  }
+  ensureAudio();
+});
+
+window.addEventListener("keyup", event => {
+  if (event.code === "ArrowLeft" || event.code === "KeyA") {
+    state.keys.left = false;
+  }
+  if (event.code === "ArrowRight" || event.code === "KeyD") {
+    state.keys.right = false;
+  }
+  if (event.code === "Space") {
+    state.keys.shield = false;
+  }
+});
+
+function toggleMute() {
+  state.muted = !state.muted;
+  ui.mute.textContent = state.muted ? "Sound Off" : "Sound On";
+  if (audioState.master) {
+    audioState.master.gain.value = state.muted ? 0 : 0.28;
+  }
 }
 
-function formatDate(value) {
-  return value ? new Date(value).toLocaleString("en-GB") : "-";
+function ensureAudio() {
+  if (state.musicStarted) {
+    if (audioState.ctx?.state === "suspended") {
+      audioState.ctx.resume();
+    }
+    return;
+  }
+
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) {
+    return;
+  }
+
+  const audioCtx = new AudioContextClass();
+  const master = audioCtx.createGain();
+  const musicGain = audioCtx.createGain();
+  const fxGain = audioCtx.createGain();
+
+  master.gain.value = state.muted ? 0 : 0.28;
+  musicGain.gain.value = 0.48;
+  fxGain.gain.value = 0.52;
+
+  musicGain.connect(master);
+  fxGain.connect(master);
+  master.connect(audioCtx.destination);
+
+  audioState.ctx = audioCtx;
+  audioState.master = master;
+  audioState.musicGain = musicGain;
+  audioState.fxGain = fxGain;
+  audioState.nextNoteAt = audioCtx.currentTime + 0.05;
+  state.musicStarted = true;
+  scheduleMusic();
 }
 
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+function scheduleMusic() {
+  if (!audioState.ctx) {
+    return;
+  }
+
+  const melody = state.level === 1
+    ? [523.25, 659.25, 783.99, 659.25, 523.25, 659.25, 880, 659.25]
+    : [523.25, 698.46, 783.99, 932.33, 783.99, 698.46, 659.25, 523.25];
+  const bass = state.level === 1
+    ? [130.81, 130.81, 196, 130.81]
+    : [146.83, 196, 220, 196];
+
+  while (audioState.nextNoteAt < audioState.ctx.currentTime + 0.35) {
+    const melodyFreq = melody[audioState.melodyStep % melody.length];
+    const bassFreq = bass[audioState.bassStep % bass.length];
+
+    playTone(melodyFreq, audioState.nextNoteAt, 0.11, "square", 0.08, audioState.musicGain);
+    playTone(bassFreq, audioState.nextNoteAt, 0.18, "triangle", 0.06, audioState.musicGain);
+
+    audioState.nextNoteAt += 0.18;
+    audioState.melodyStep += 1;
+    if (audioState.melodyStep % 2 === 0) {
+      audioState.bassStep += 1;
+    }
+  }
+
+  audioState.musicTimer = window.setTimeout(scheduleMusic, 90);
 }
 
-function escapeAttribute(value) {
-  return escapeHtml(value).replace(/`/g, "&#96;");
+function playTone(frequency, startAt, duration, type, volume, destination) {
+  if (!audioState.ctx || state.muted) {
+    return;
+  }
+
+  const osc = audioState.ctx.createOscillator();
+  const gain = audioState.ctx.createGain();
+
+  osc.type = type;
+  osc.frequency.setValueAtTime(frequency, startAt);
+  gain.gain.setValueAtTime(0, startAt);
+  gain.gain.linearRampToValueAtTime(volume, startAt + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+  osc.connect(gain);
+  gain.connect(destination);
+  osc.start(startAt);
+  osc.stop(startAt + duration);
 }
 
-function ensureAdminAccess() {
-  if (state.adminUnlocked && state.adminPassword === ADMIN_PASSWORD) {
+function playFx(type) {
+  if (!audioState.ctx || state.muted) {
+    return;
+  }
+
+  const now = audioState.ctx.currentTime;
+
+  if (type === "block") {
+    playTone(860, now, 0.04, "square", 0.09, audioState.fxGain);
+    playTone(620, now + 0.03, 0.05, "square", 0.06, audioState.fxGain);
+    return;
+  }
+
+  if (type === "panel-hit") {
+    playTone(190, now, 0.14, "sawtooth", 0.09, audioState.fxGain);
+    return;
+  }
+
+  if (type === "panel-break") {
+    playTone(160, now, 0.18, "sawtooth", 0.1, audioState.fxGain);
+    playTone(120, now + 0.05, 0.2, "triangle", 0.08, audioState.fxGain);
+    return;
+  }
+
+  if (type === "level-up") {
+    playTone(523.25, now, 0.08, "square", 0.08, audioState.fxGain);
+    playTone(659.25, now + 0.08, 0.08, "square", 0.08, audioState.fxGain);
+    playTone(783.99, now + 0.16, 0.12, "square", 0.1, audioState.fxGain);
+    return;
+  }
+
+  if (type === "game-over") {
+    playTone(196, now, 0.16, "triangle", 0.08, audioState.fxGain);
+    playTone(146.83, now + 0.15, 0.16, "triangle", 0.08, audioState.fxGain);
+    playTone(110, now + 0.3, 0.28, "triangle", 0.08, audioState.fxGain);
+    return;
+  }
+
+  if (type === "victory") {
+    playTone(523.25, now, 0.09, "square", 0.08, audioState.fxGain);
+    playTone(659.25, now + 0.09, 0.09, "square", 0.08, audioState.fxGain);
+    playTone(783.99, now + 0.18, 0.09, "square", 0.08, audioState.fxGain);
+    playTone(1046.5, now + 0.27, 0.18, "square", 0.1, audioState.fxGain);
+  }
+}
+
+function randomBetween(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+function spawnProjectile(enemy) {
+  const targetPanel = state.panels.filter(panel => panel.hp > 0)[Math.floor(Math.random() * Math.max(1, countAlivePanels()))];
+  const targetX = targetPanel ? targetPanel.x + targetPanel.width / 2 : WIDTH / 2;
+  const dx = targetX - enemy.x;
+  const dy = state.player.y - 40;
+  const travel = Math.max(Math.hypot(dx, dy), 1);
+  const levelFactor = state.level === 1 ? 1 : 1.25;
+  const speed = enemy.kind === "stone"
+    ? randomBetween(170, 260) * levelFactor
+    : randomBetween(180, 280) * levelFactor;
+
+  state.projectiles.push({
+    x: enemy.x,
+    y: 120,
+    vx: (dx / travel) * randomBetween(18, 65),
+    vy: speed,
+    radius: enemy.kind === "stone" ? PROJECTILE_RADIUS : 18,
+    rotation: Math.random() * Math.PI * 2,
+    spin: randomBetween(-4.2, 4.2),
+    kind: enemy.kind,
+    damage: 1
+  });
+}
+
+function updatePlaying(dt) {
+  const move = (state.keys.left ? -1 : 0) + (state.keys.right ? 1 : 0);
+  state.player.x += move * PLAYER_SPEED * dt;
+  state.player.x = Math.max(60, Math.min(WIDTH - 60, state.player.x));
+  state.player.shieldRaised = state.keys.shield;
+
+  state.levelTime = Math.max(0, state.levelTime - dt);
+
+  const config = levelConfigs[state.level];
+  const elapsed = LEVEL_DURATION - state.levelTime;
+  const intensity = Math.min(1, elapsed / LEVEL_DURATION);
+
+  for (const enemy of state.enemies) {
+    enemy.wobble += dt * 1.5;
+    enemy.cooldown -= dt;
+    const spawnRate = config.baseSpawn + config.spawnRamp * intensity;
+    const shotWindow = 1 / spawnRate;
+    if (enemy.cooldown <= 0 && state.projectiles.length < config.maxProjectiles) {
+      spawnProjectile(enemy);
+      enemy.cooldown = shotWindow * randomBetween(0.7, 1.18);
+    }
+  }
+
+  for (const projectile of state.projectiles) {
+    projectile.x += projectile.vx * dt;
+    projectile.y += projectile.vy * dt;
+    projectile.rotation += projectile.spin * dt;
+  }
+
+  handleCollisions();
+
+  state.projectiles = state.projectiles.filter(projectile => projectile.y < HEIGHT + 60);
+  state.particles = state.particles
+    .map(particle => ({
+      ...particle,
+      x: particle.x + particle.vx * dt,
+      y: particle.y + particle.vy * dt,
+      life: particle.life - dt
+    }))
+    .filter(particle => particle.life > 0);
+  state.flashes = state.flashes
+    .map(flash => ({ ...flash, life: flash.life - dt }))
+    .filter(flash => flash.life > 0);
+
+  if (countAlivePanels() <= 0) {
+    gameOver();
+    return;
+  }
+
+  if (state.levelTime <= 0) {
+    if (countAlivePanels() > 0) {
+      advanceLevel();
+    } else {
+      gameOver();
+    }
+  }
+}
+
+function handleCollisions() {
+  const shield = getShieldRect();
+
+  state.projectiles = state.projectiles.filter(projectile => {
+    if (state.player.shieldRaised && intersectsCircleRect(projectile, shield)) {
+      state.score += projectile.kind === "stone" ? 120 : 140;
+      spawnImpact(projectile.x, projectile.y, projectile.kind === "stone" ? "#e0d9cf" : "#8aff8d", 10);
+      state.flashes.push({ x: projectile.x, y: projectile.y, radius: 34, color: "#59f2ff", life: 0.12 });
+      playFx("block");
+      return false;
+    }
+
+    for (const panel of state.panels) {
+      if (panel.hp > 0 && intersectsCircleRect(projectile, panel)) {
+        damagePanel(panel, projectile);
+        return false;
+      }
+    }
+
     return true;
-  }
-
-  const enteredPassword = window.prompt("Enter the admin password");
-  if (enteredPassword === ADMIN_PASSWORD) {
-    state.adminPassword = enteredPassword;
-    state.adminUnlocked = true;
-    sessionStorage.setItem("adminPassword", enteredPassword);
-    sessionStorage.setItem("adminUnlocked", "true");
-    return true;
-  }
-
-  if (enteredPassword !== null) {
-    window.alert("Incorrect password.");
-  }
-  return false;
+  });
 }
+
+function getShieldRect() {
+  return {
+    x: state.player.x - state.player.shieldWidth / 2,
+    y: state.player.y - 18,
+    width: state.player.shieldWidth,
+    height: state.player.shieldHeight
+  };
+}
+
+function intersectsCircleRect(circle, rect) {
+  const nearestX = Math.max(rect.x, Math.min(circle.x, rect.x + rect.width));
+  const nearestY = Math.max(rect.y, Math.min(circle.y, rect.y + rect.height));
+  const dx = circle.x - nearestX;
+  const dy = circle.y - nearestY;
+  return dx * dx + dy * dy <= circle.radius * circle.radius;
+}
+
+function damagePanel(panel, projectile) {
+  panel.hp = Math.max(0, panel.hp - projectile.damage);
+  state.score = Math.max(0, state.score - 55);
+  state.flashes.push({ x: panel.x + panel.width / 2, y: panel.y + panel.height / 2, radius: 40, color: "#ff4f70", life: 0.18 });
+  spawnImpact(projectile.x, projectile.y, projectile.kind === "stone" ? "#cfc7bc" : "#a5ffad", panel.hp === 0 ? 16 : 8);
+
+  if (panel.hp === 0) {
+    playFx("panel-break");
+  } else {
+    playFx("panel-hit");
+  }
+}
+
+function spawnImpact(x, y, color, count) {
+  for (let i = 0; i < count; i += 1) {
+    state.particles.push({
+      x,
+      y,
+      vx: randomBetween(-90, 90),
+      vy: randomBetween(-90, 90),
+      life: randomBetween(0.2, 0.55),
+      size: randomBetween(3, 8),
+      color
+    });
+  }
+}
+
+function draw() {
+  drawBackground();
+  drawPanels();
+  drawPlayer();
+  drawEnemies();
+  drawProjectiles();
+  drawParticles();
+  drawFlashes();
+  drawOverlay();
+  syncHud();
+}
+
+function syncHud() {
+  ui.level.textContent = String(state.level);
+  ui.timer.textContent = String(Math.ceil(state.levelTime));
+  ui.panels.textContent = String(countAlivePanels());
+  ui.score.textContent = String(Math.round(state.score));
+}
+
+function drawBackground() {
+  const sky = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+  sky.addColorStop(0, "#220438");
+  sky.addColorStop(0.5, "#120020");
+  sky.addColorStop(1, "#05030e");
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+  ctx.fillStyle = "#ffd34d";
+  ctx.fillRect(0, 0, WIDTH, 10);
+
+  for (let i = 0; i < 55; i += 1) {
+    const x = (i * 173) % WIDTH;
+    const y = (i * 97) % 230;
+    ctx.fillStyle = i % 4 === 0 ? "#59f2ff" : "#fbe7a0";
+    ctx.fillRect(x, y, 2, 2);
+  }
+
+  ctx.fillStyle = "#11121f";
+  ctx.beginPath();
+  ctx.moveTo(0, 360);
+  ctx.lineTo(120, 280);
+  ctx.lineTo(250, 350);
+  ctx.lineTo(390, 260);
+  ctx.lineTo(540, 340);
+  ctx.lineTo(710, 240);
+  ctx.lineTo(860, 330);
+  ctx.lineTo(WIDTH, 280);
+  ctx.lineTo(WIDTH, HEIGHT);
+  ctx.lineTo(0, HEIGHT);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = "#1b2f18";
+  ctx.fillRect(0, 440, WIDTH, HEIGHT - 440);
+  ctx.fillStyle = "#2e5e2d";
+  for (let i = 0; i < WIDTH; i += 48) {
+    ctx.fillRect(i, 470 + (i % 3) * 4, 30, 4);
+  }
+}
+
+function drawPanels() {
+  for (const panel of state.panels) {
+    const intact = panel.hp > 0;
+    ctx.fillStyle = intact ? "#143c77" : "#2b2034";
+    ctx.strokeStyle = intact ? "#59f2ff" : "#554368";
+    ctx.lineWidth = 3;
+    roundRect(panel.x, panel.y, panel.width, panel.height, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    if (intact) {
+      ctx.strokeStyle = "rgba(255,255,255,0.25)";
+      ctx.lineWidth = 1;
+      for (let x = panel.x + 18; x < panel.x + panel.width; x += 20) {
+        ctx.beginPath();
+        ctx.moveTo(x, panel.y + 4);
+        ctx.lineTo(x, panel.y + panel.height - 4);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.moveTo(panel.x + 6, panel.y + panel.height / 2);
+      ctx.lineTo(panel.x + panel.width - 6, panel.y + panel.height / 2);
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = "#ff4f70";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(panel.x + 12, panel.y + 8);
+      ctx.lineTo(panel.x + panel.width - 10, panel.y + panel.height - 8);
+      ctx.moveTo(panel.x + panel.width - 12, panel.y + 7);
+      ctx.lineTo(panel.x + 10, panel.y + panel.height - 7);
+      ctx.stroke();
+    }
+
+    drawPanelHp(panel);
+  }
+}
+
+function drawPanelHp(panel) {
+  const barX = panel.x;
+  const barY = panel.y - 10;
+  ctx.fillStyle = "#35214c";
+  ctx.fillRect(barX, barY, panel.width, 5);
+  if (panel.hp > 0) {
+    const ratio = panel.hp / PANEL_HP;
+    ctx.fillStyle = ratio > 0.66 ? "#68ff91" : ratio > 0.33 ? "#ffcc31" : "#ff4f70";
+    ctx.fillRect(barX, barY, panel.width * ratio, 5);
+  }
+}
+
+function drawPlayer() {
+  const { x, y, width, height } = state.player;
+
+  ctx.fillStyle = "#274eac";
+  ctx.fillRect(x - width / 2, y, width, height - 16);
+  ctx.fillStyle = "#f1c298";
+  ctx.fillRect(x - 14, y - 24, 28, 28);
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(x - 10, y - 15, 5, 5);
+  ctx.fillRect(x + 5, y - 15, 5, 5);
+  ctx.fillStyle = "#1c2430";
+  ctx.fillRect(x - 9, y - 13, 3, 3);
+  ctx.fillRect(x + 6, y - 13, 3, 3);
+  ctx.fillStyle = "#6f4027";
+  ctx.fillRect(x - 15, y - 30, 30, 8);
+  ctx.fillRect(x - width / 2 - 8, y + 10, 8, 16);
+  ctx.fillRect(x + width / 2, y + 10, 8, 16);
+  ctx.fillRect(x - 16, y + height - 16, 9, 22);
+  ctx.fillRect(x + 7, y + height - 16, 9, 22);
+
+  const shield = getShieldRect();
+  ctx.fillStyle = state.player.shieldRaised ? "#7df6ff" : "#8fd6dc";
+  ctx.fillRect(shield.x, shield.y, shield.width, shield.height);
+  ctx.strokeStyle = "#f5fbff";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(shield.x, shield.y, shield.width, shield.height);
+  ctx.fillStyle = "#314256";
+  ctx.fillRect(x - 5, shield.y + 4, 10, 40);
+}
+
+function drawEnemies() {
+  for (const enemy of state.enemies) {
+    const bob = Math.sin(enemy.wobble) * 4;
+    const x = enemy.x;
+    const y = 46 + bob;
+
+    ctx.fillStyle = enemy.suit;
+    ctx.fillRect(x - 36, y + 30, 72, 62);
+    ctx.fillStyle = enemy.face;
+    ctx.fillRect(x - 24, y, 48, 42);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(x - 15, y + 14, 8, 6);
+    ctx.fillRect(x + 7, y + 14, 8, 6);
+    ctx.fillStyle = "#232323";
+    ctx.fillRect(x - 12, y + 16, 4, 3);
+    ctx.fillRect(x + 8, y + 16, 4, 3);
+    ctx.fillStyle = enemy.hair;
+    ctx.fillRect(x - 27, y - 4, 54, 13);
+
+    if (enemy.id === "trump") {
+      ctx.fillStyle = "#ff6d54";
+      ctx.fillRect(x - 14, y + 27, 28, 4);
+      ctx.fillStyle = "#c61224";
+      ctx.fillRect(x - 12, y + 38, 24, 10);
+    } else {
+      ctx.fillStyle = "#dce6ef";
+      ctx.fillRect(x - 8, y + 30, 16, 32);
+      ctx.fillStyle = "#ea4545";
+      ctx.fillRect(x - 4, y + 30, 8, 32);
+      ctx.strokeStyle = "#1e1e1e";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(x - 27, y + 10, 12, 12);
+      ctx.strokeRect(x + 15, y + 10, 12, 12);
+      ctx.beginPath();
+      ctx.moveTo(x - 15, y + 16);
+      ctx.lineTo(x + 15, y + 16);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = "#f0c79e";
+    ctx.fillRect(x - 46, y + 36, 12, 34);
+    ctx.fillRect(x + 34, y + 36, 12, 34);
+
+    ctx.fillStyle = enemy.kind === "stone" ? "#bbb2a8" : "#95ff9b";
+    if (enemy.kind === "stone") {
+      drawRock(x + 50, y + 50, 14, 0.3);
+    } else {
+      drawCash(x + 52, y + 54, 24, 15, 0.15);
+    }
+  }
+}
+
+function drawProjectiles() {
+  for (const projectile of state.projectiles) {
+    if (projectile.kind === "stone") {
+      drawRock(projectile.x, projectile.y, projectile.radius, projectile.rotation);
+    } else {
+      drawCash(projectile.x, projectile.y, 28, 18, projectile.rotation);
+    }
+  }
+}
+
+function drawRock(x, y, size, rotation) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rotation);
+  ctx.fillStyle = "#b5aca3";
+  ctx.beginPath();
+  ctx.moveTo(-size, -size * 0.2);
+  ctx.lineTo(-size * 0.45, -size);
+  ctx.lineTo(size * 0.75, -size * 0.75);
+  ctx.lineTo(size, size * 0.1);
+  ctx.lineTo(size * 0.4, size);
+  ctx.lineTo(-size * 0.7, size * 0.85);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "#6f655d";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawCash(x, y, width, height, rotation) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rotation);
+  ctx.fillStyle = "#9fff96";
+  ctx.fillRect(-width / 2, -height / 2, width, height);
+  ctx.strokeStyle = "#23502b";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(-width / 2, -height / 2, width, height);
+  ctx.fillStyle = "#23502b";
+  ctx.font = "bold 14px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("$", 0, 5);
+  ctx.restore();
+}
+
+function drawParticles() {
+  for (const particle of state.particles) {
+    ctx.globalAlpha = Math.max(0, particle.life * 2);
+    ctx.fillStyle = particle.color;
+    ctx.fillRect(particle.x, particle.y, particle.size, particle.size);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawFlashes() {
+  for (const flash of state.flashes) {
+    ctx.globalAlpha = flash.life * 3;
+    ctx.strokeStyle = flash.color;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(flash.x, flash.y, flash.radius * (1.2 - flash.life), 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawOverlay() {
+  if (state.screen === "playing") {
+    return;
+  }
+
+  ctx.fillStyle = "rgba(4, 3, 10, 0.46)";
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  ctx.textAlign = "center";
+
+  if (state.screen === "title") {
+    ctx.fillStyle = "#ffcc31";
+    ctx.font = "bold 58px sans-serif";
+    ctx.fillText("SOLAR DEFENDER", WIDTH / 2, 170);
+    ctx.fillStyle = "#59f2ff";
+    ctx.font = "bold 28px sans-serif";
+    ctx.fillText("Block the barrage. Save the solar farm.", WIDTH / 2, 230);
+    ctx.fillStyle = "#fff7db";
+    ctx.font = "22px sans-serif";
+    ctx.fillText("Start with the button or press Enter.", WIDTH / 2, 300);
+    ctx.fillText("Shield with Space. Move with arrows or A/D.", WIDTH / 2, 338);
+  }
+
+  if (state.screen === "victory") {
+    ctx.fillStyle = "#68ff91";
+    ctx.font = "bold 56px sans-serif";
+    ctx.fillText("YOU SAVED THE FARM", WIDTH / 2, 200);
+    ctx.fillStyle = "#fff7db";
+    ctx.font = "24px sans-serif";
+    ctx.fillText(`Final score: ${Math.round(state.score)}`, WIDTH / 2, 260);
+    ctx.fillText("Press Start Game for another run.", WIDTH / 2, 300);
+  }
+
+  if (state.screen === "gameover") {
+    ctx.fillStyle = "#ff4f70";
+    ctx.font = "bold 60px sans-serif";
+    ctx.fillText("GAME OVER", WIDTH / 2, 200);
+    ctx.fillStyle = "#fff7db";
+    ctx.font = "24px sans-serif";
+    ctx.fillText("Every panel got smashed.", WIDTH / 2, 260);
+    ctx.fillText("Press Start Game to reset the defence line.", WIDTH / 2, 300);
+  }
+}
+
+function roundRect(x, y, width, height, radius) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+}
+
+function frame(timestamp) {
+  if (!state.lastTime) {
+    state.lastTime = timestamp;
+  }
+
+  const dt = Math.min(0.033, (timestamp - state.lastTime) / 1000);
+  state.lastTime = timestamp;
+
+  if (state.screen === "playing") {
+    updatePlaying(dt);
+  }
+
+  draw();
+  requestAnimationFrame(frame);
+}
+
+updateMessage("Press start, then move with the arrow keys or A/D. Hold Space to raise the squeegee shield.");
+resetPanels();
+prepareLevel(1);
+draw();
+requestAnimationFrame(frame);

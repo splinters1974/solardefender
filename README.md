@@ -1,33 +1,25 @@
-# Bid / No Bid Assessment App
+# Solar Defender
 
-A configurable web app based on the Excel bid / no bid process.
+A simple Atari-style browser game built as a static site.
 
-## What it does
+## Game loop
 
-- Lets users complete a bid / no bid assessment in the browser
-- Scores attractiveness and feasibility live
-- Flags key criteria that hit warning values
-- Produces a clear recommendation such as `Bid`, `Bid with High Priority`, or `No Bid`
-- Saves completed assessments
-- Generates a downloadable PDF report
-- Includes an admin area to edit questions, weights, options, and decision thresholds
+- You control a cleaner with a squeegee shield.
+- There are 20 solar panels to protect.
+- Level 1 lasts 75 seconds while a Trump-style orange-faced character throws stones.
+- Level 2 lasts 75 seconds and adds an Ed Miliband-style suited character throwing heavy bundles of cash.
+- You win a level by surviving with at least one panel left.
+- If all panels are smashed, the game ends immediately.
 
-## Deployment model
+## Controls
 
-The frontend is published from [`public/index.html`](/Users/martynsheridan/Documents/New%20project/public/index.html).
+- Move: `Left / Right Arrow` or `A / D`
+- Raise shield: `Space`
+- Touch controls are included for mobile
 
-The live app is designed to run on Netlify using serverless functions and Netlify Blobs:
+## Sound
 
-- `GET/POST /api/config`
-- `POST /api/config/reset`
-- `GET/POST /api/assessments`
-- `GET /api/reports/:id`
-
-## Local files
-
-- Seeded workbook-based config: [`data/default-config.json`](/Users/martynsheridan/Documents/New%20project/data/default-config.json)
-- Local fallback server: [`server.js`](/Users/martynsheridan/Documents/New%20project/server.js)
-- Netlify functions: [`netlify/functions`](/Users/martynsheridan/Documents/New%20project/netlify/functions)
+The soundtrack and effects are generated in the browser with Web Audio, so there are no audio files to manage.
 
 ## Run locally
 
@@ -37,21 +29,20 @@ The live app is designed to run on Netlify using serverless functions and Netlif
 npm install
 ```
 
-2. Run the local fallback server:
+2. Start the local server:
 
 ```bash
 npm start
 ```
 
-3. For Netlify-style local development, use:
+3. Open:
 
-```bash
-npx netlify dev
+```text
+http://127.0.0.1:3000
 ```
 
 ## Deploy to Netlify
 
-1. Push this repo to GitHub.
-2. Import the GitHub repo into Netlify.
-3. Netlify will use [`netlify.toml`](/Users/martynsheridan/Documents/New%20project/netlify.toml) automatically.
-4. The app will then persist admin config, saved assessments, and generated PDFs using Netlify Blobs.
+1. Push your changes to GitHub.
+2. Import the repo into Netlify, or trigger a new deploy if it is already connected.
+3. Netlify will publish the static frontend from the `public` folder using the existing repo setup.

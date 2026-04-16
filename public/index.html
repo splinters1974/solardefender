@@ -3,99 +3,68 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bid / No Bid Assessment</title>
+    <title>Solar Defender</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="app-shell">
-      <header class="hero">
-        <div>
-          <p class="eyebrow">Configurable Scoring Workspace</p>
-          <h1 id="app-title">Bid / No Bid Assessment</h1>
-          <p class="hero-copy">
-            An assessment tool to determine whether the project you have uncovered has the right to
-            demand internal resource to develop
-          </p>
-        </div>
-        <div class="hero-card">
-          <img class="hero-logo" src="/ameresco-bid-no-bid.png" alt="Ameresco Bid No Bid logo" />
-        </div>
+    <div class="game-shell">
+      <header class="marquee">
+        <p class="marquee-kicker">ATARI STYLE PANEL DEFENCE</p>
+        <h1>SOLAR DEFENDER</h1>
+        <p class="marquee-copy">
+          Guard the solar farm with your cleaning squeegee. Survive two 75-second waves and keep at least
+          one panel intact.
+        </p>
       </header>
 
-      <nav class="tabs">
-        <button class="tab is-active" data-tab="assessment">Assessment</button>
-        <button class="tab" data-tab="admin">Admin</button>
-        <button class="tab" data-tab="reports">Recent Reports</button>
-      </nav>
-
-      <main>
-        <section class="tab-panel is-active" id="assessment-panel">
-          <div class="panel-grid assessment-layout">
-            <div class="surface">
-              <div class="surface-header">
-                <div>
-                  <p class="section-label">User Workflow</p>
-                  <h2>Opportunity Assessment</h2>
-                </div>
-                <div class="template-picker">
-                  <label for="template-select">Template</label>
-                  <select id="template-select"></select>
-                </div>
-              </div>
-              <form id="assessment-form" class="stack gap-lg"></form>
+      <main class="cabinet">
+        <section class="status-panel">
+          <div class="status-row">
+            <div class="status-card">
+              <span class="label">Level</span>
+              <strong id="level-label">1</strong>
             </div>
+            <div class="status-card">
+              <span class="label">Time</span>
+              <strong id="timer-label">75</strong>
+            </div>
+            <div class="status-card">
+              <span class="label">Panels</span>
+              <strong id="panels-label">20</strong>
+            </div>
+            <div class="status-card">
+              <span class="label">Score</span>
+              <strong id="score-label">0</strong>
+            </div>
+          </div>
 
-            <aside class="surface sticky">
-              <div class="surface-header">
-                <div>
-                  <p class="section-label">Live Output</p>
-                  <h2>Recommendation</h2>
-                </div>
-              </div>
-              <div id="score-summary" class="stack gap-md"></div>
-              <div class="actions">
-                <button id="save-report" class="button button-primary" type="button">
-                  Save Assessment & Generate PDF
-                </button>
-                <a id="download-report" class="button button-secondary is-hidden" target="_blank" rel="noopener">
-                  Open PDF
-                </a>
-              </div>
-              <p id="save-status" class="muted"></p>
-            </aside>
+          <div class="status-row secondary">
+            <button id="start-button" class="arcade-button" type="button">Start Game</button>
+            <button id="mute-button" class="arcade-button arcade-button-alt" type="button">Sound On</button>
+          </div>
+
+          <div id="message-box" class="message-box">
+            Press start, then move with the arrow keys or A/D. Hold Space to raise the squeegee shield.
           </div>
         </section>
 
-        <section class="tab-panel" id="admin-panel">
-          <div class="surface stack gap-lg">
-            <div class="surface-header">
-              <div>
-                <p class="section-label">Admin Workflow</p>
-                <h2>Scoring Configuration</h2>
-              </div>
-              <div class="actions">
-                <button id="reset-config" class="button button-secondary" type="button">
-                  Reset to Seeded Template
-                </button>
-                <button id="save-config" class="button button-primary" type="button">
-                  Save Admin Changes
-                </button>
-              </div>
-            </div>
-            <div id="admin-content" class="stack gap-lg"></div>
-            <p id="admin-status" class="muted"></p>
-          </div>
+        <section class="screen-shell">
+          <canvas id="game" width="960" height="640" aria-label="Solar Defender game canvas"></canvas>
         </section>
 
-        <section class="tab-panel" id="reports-panel">
-          <div class="surface stack gap-lg">
-            <div class="surface-header">
-              <div>
-                <p class="section-label">Audit Trail</p>
-                <h2>Recent Assessments</h2>
-              </div>
-            </div>
-            <div id="reports-list" class="stack gap-md"></div>
+        <section class="controls-panel">
+          <div class="control-card">
+            <h2>How To Play</h2>
+            <p>Move left and right above the panel array.</p>
+            <p>Hold the squeegee up to block stones and flying cash.</p>
+            <p>If all 20 panels are smashed, the run is over.</p>
+            <p>Each level lasts 75 seconds. Keep one panel alive to advance or win.</p>
+          </div>
+
+          <div class="touch-controls">
+            <button id="left-button" class="touch-button" type="button">Left</button>
+            <button id="shield-button" class="touch-button touch-button-main" type="button">Shield</button>
+            <button id="right-button" class="touch-button" type="button">Right</button>
           </div>
         </section>
       </main>
