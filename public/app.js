@@ -55,9 +55,9 @@ const audioState = {
 const levelConfigs = {
   1: {
     name: "Trump's Stone Barrage",
-    baseSpawn: 1.2,
-    spawnRamp: 0.5,
-    maxProjectiles: 7,
+    baseSpawn: 1.55,
+    spawnRamp: 0.75,
+    maxProjectiles: 10,
     throwers: [
       {
         id: "trump",
@@ -71,9 +71,9 @@ const levelConfigs = {
   },
   2: {
     name: "Cash Storm Coalition",
-    baseSpawn: 1.8,
-    spawnRamp: 0.85,
-    maxProjectiles: 12,
+    baseSpawn: 2.3,
+    spawnRamp: 1.1,
+    maxProjectiles: 16,
     throwers: [
       {
         id: "trump",
@@ -172,6 +172,7 @@ function prepareLevel(levelNumber) {
 function advanceLevel() {
   if (state.level === 1) {
     prepareLevel(2);
+    pauseMusicFor(0.9);
     updateMessage("Level 2: fresh panels are online. Trump and Ed now attack across the full solar farm.");
     playFx("level-up");
     return;
@@ -184,6 +185,7 @@ function advanceLevel() {
 
 function gameOver() {
   state.screen = "gameover";
+  stopMusic();
   playFx("game-over");
   updateMessage(`Game over. All panels were smashed. Final score: ${state.score}. Press Start Game to try again.`);
 }
@@ -282,10 +284,31 @@ function toggleMute() {
   }
 }
 
+function stopMusic() {
+  if (audioState.musicTimer) {
+    window.clearTimeout(audioState.musicTimer);
+    audioState.musicTimer = null;
+  }
+  audioState.nextNoteAt = 0;
+}
+
+function pauseMusicFor(seconds) {
+  if (!audioState.ctx) {
+    return;
+  }
+  stopMusic();
+  audioState.nextNoteAt = audioState.ctx.currentTime + seconds;
+  scheduleMusic();
+}
+
 function ensureAudio() {
   if (state.musicStarted) {
     if (audioState.ctx?.state === "suspended") {
       audioState.ctx.resume();
+    }
+    if (!audioState.musicTimer && state.screen === "playing") {
+      audioState.nextNoteAt = Math.max(audioState.ctx.currentTime + 0.05, audioState.nextNoteAt || 0);
+      scheduleMusic();
     }
     return;
   }
@@ -318,32 +341,41 @@ function ensureAudio() {
 }
 
 function scheduleMusic() {
-  if (!audioState.ctx) {
+  if (!audioState.ctx || audioState.musicTimer) {
     return;
   }
 
-  const melody = state.level === 1
-    ? [523.25, 659.25, 783.99, 659.25, 523.25, 659.25, 880, 659.25]
-    : [523.25, 698.46, 783.99, 932.33, 783.99, 698.46, 659.25, 523.25];
-  const bass = state.level === 1
-    ? [130.81, 130.81, 196, 130.81]
-    : [146.83, 196, 220, 196];
-
-  while (audioState.nextNoteAt < audioState.ctx.currentTime + 0.35) {
-    const melodyFreq = melody[audioState.melodyStep % melody.length];
-    const bassFreq = bass[audioState.bassStep % bass.length];
-
-    playTone(melodyFreq, audioState.nextNoteAt, 0.11, "square", 0.08, audioState.musicGain);
-    playTone(bassFreq, audioState.nextNoteAt, 0.18, "triangle", 0.06, audioState.musicGain);
-
-    audioState.nextNoteAt += 0.18;
-    audioState.melodyStep += 1;
-    if (audioState.melodyStep % 2 === 0) {
-      audioState.bassStep += 1;
+  const tick = () => {
+    if (!audioState.ctx) {
+      audioState.musicTimer = null;
+      return;
     }
-  }
 
-  audioState.musicTimer = window.setTimeout(scheduleMusic, 90);
+    const melody = state.level === 1
+      ? [523.25, 659.25, 783.99, 659.25, 523.25, 659.25, 880, 659.25]
+      : [523.25, 698.46, 783.99, 932.33, 783.99, 698.46, 659.25, 523.25];
+    const bass = state.level === 1
+      ? [130.81, 130.81, 196, 130.81]
+      : [146.83, 196, 220, 196];
+
+    while (audioState.nextNoteAt < audioState.ctx.currentTime + 0.35) {
+      const melodyFreq = melody[audioState.melodyStep % melody.length];
+      const bassFreq = bass[audioState.bassStep % bass.length];
+
+      playTone(melodyFreq, audioState.nextNoteAt, 0.11, "square", 0.08, audioState.musicGain);
+      playTone(bassFreq, audioState.nextNoteAt, 0.18, "triangle", 0.06, audioState.musicGain);
+
+      audioState.nextNoteAt += 0.18;
+      audioState.melodyStep += 1;
+      if (audioState.melodyStep % 2 === 0) {
+        audioState.bassStep += 1;
+      }
+    }
+
+    audioState.musicTimer = window.setTimeout(tick, 90);
+  };
+
+  tick();
 }
 
 function playTone(frequency, startAt, duration, type, volume, destination) {
@@ -396,16 +428,18 @@ function playFx(type) {
   }
 
   if (type === "level-up") {
-    playTone(523.25, now, 0.08, "square", 0.08, audioState.fxGain);
-    playTone(659.25, now + 0.08, 0.08, "square", 0.08, audioState.fxGain);
-    playTone(783.99, now + 0.16, 0.12, "square", 0.1, audioState.fxGain);
+    playTone(523.25, now, 0.12, "square", 0.1, audioState.fxGain);
+    playTone(659.25, now + 0.12, 0.12, "square", 0.1, audioState.fxGain);
+    playTone(783.99, now + 0.24, 0.12, "square", 0.12, audioState.fxGain);
+    playTone(1046.5, now + 0.36, 0.22, "square", 0.14, audioState.fxGain);
     return;
   }
 
   if (type === "game-over") {
-    playTone(196, now, 0.16, "triangle", 0.08, audioState.fxGain);
-    playTone(146.83, now + 0.15, 0.16, "triangle", 0.08, audioState.fxGain);
-    playTone(110, now + 0.3, 0.28, "triangle", 0.08, audioState.fxGain);
+    playTone(220, now, 0.18, "triangle", 0.09, audioState.fxGain);
+    playTone(174.61, now + 0.16, 0.2, "triangle", 0.09, audioState.fxGain);
+    playTone(130.81, now + 0.34, 0.28, "triangle", 0.1, audioState.fxGain);
+    playTone(98, now + 0.56, 0.42, "triangle", 0.1, audioState.fxGain);
     return;
   }
 

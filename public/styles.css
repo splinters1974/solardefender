@@ -182,18 +182,21 @@ canvas {
   grid-template-columns: minmax(0, 1fr) minmax(220px, 0.75fr);
   gap: 8px;
   align-items: center;
+  padding-top: 6px;
+  padding-bottom: 6px;
 }
 
 .control-card h2 {
-  margin: 0 0 5px;
+  margin: 0 0 3px;
   color: var(--line);
-  font-size: 0.85rem;
+  font-size: 0.78rem;
 }
 
 .control-card p {
-  margin: 4px 0;
+  margin: 2px 0;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.74rem;
+  line-height: 1.15;
 }
 
 .touch-controls {
@@ -223,32 +226,8 @@ canvas {
 }
 
 @media (min-width: 900px) {
-  html,
-  body {
-    height: 100%;
-  }
-
-  body {
-    overflow-y: hidden;
-  }
-
-  .game-shell {
-    min-height: 100vh;
-    display: grid;
-    grid-template-rows: auto 1fr;
-  }
-
-  .cabinet {
-    min-height: 0;
-    grid-template-rows: auto minmax(0, 1fr) auto;
-  }
-
-  .screen-shell {
-    min-height: 0;
-  }
-
   canvas {
-    max-height: 63vh;
+    max-height: 67vh;
     margin: 0 auto;
   }
 }
