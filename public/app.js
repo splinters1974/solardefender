@@ -16,7 +16,7 @@ const ui = {
 
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
-const LEVEL_DURATION = 60;
+const LEVEL_DURATION = 45;
 const PANEL_COUNT = 20;
 const PANEL_HP = 2;
 const PLAYER_SPEED = 360;
@@ -510,14 +510,23 @@ function randomBetween(min, max) {
 }
 
 function nextThrowTargetX() {
-  const bands = 12;
-  const bandWidth = (WIDTH - 120) / bands;
+  const firstPanel = state.panels[0];
+  const lastPanel = state.panels[state.panels.length - 1];
+  if (!firstPanel || !lastPanel) {
+    return WIDTH / 2;
+  }
+
+  const fieldLeft = firstPanel.x;
+  const fieldRight = lastPanel.x + lastPanel.width;
+  const fieldWidth = fieldRight - fieldLeft;
+  const bands = 16;
+  const bandWidth = fieldWidth / bands;
   const useSequentialBand = Math.random() < 0.82;
   const bandIndex = useSequentialBand
     ? state.throwBandIndex++ % bands
     : Math.floor(Math.random() * bands);
-  const bandStart = 60 + bandIndex * bandWidth;
-  return bandStart + bandWidth / 2 + randomBetween(-bandWidth * 0.42, bandWidth * 0.42);
+  const bandStart = fieldLeft + bandIndex * bandWidth;
+  return bandStart + bandWidth / 2 + randomBetween(-bandWidth * 0.46, bandWidth * 0.46);
 }
 
 function spawnProjectile(enemy) {
